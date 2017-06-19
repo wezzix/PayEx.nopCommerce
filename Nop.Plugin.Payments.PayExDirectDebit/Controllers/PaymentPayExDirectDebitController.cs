@@ -51,7 +51,7 @@ namespace Nop.Plugin.Payments.PayExDirectDebit.Controllers
         [ChildActionOnly]
         public override ActionResult PaymentInfo()
         {
-            return View("~/Plugins/Payments.PayEx/Views/PaymentPayEx/PaymentInfo.cshtml");
+            return View("~/Plugins/Payments.PayExDirectDebit/Views/PaymentPayExDirectDebit/PaymentInfo.cshtml");
         }
 
         #endregion

@@ -34,8 +34,8 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Autofac">
-      <HintPath>..\..\packages\Autofac.3.5.2\lib\net40\Autofac.dll</HintPath>
+    <Reference Include="Autofac, Version=4.4.0.0, Culture=neutral, PublicKeyToken=17863af14b0044da, processorArchitecture=MSIL">
+      <HintPath>..\..\packages\Autofac.4.4.0\lib\net45\Autofac.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="EntityFramework">
@@ -80,10 +80,6 @@
     <Content Include="Notes.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\SD.Payex2\SD.Payex2.csproj">
-      <Project>{56458f3b-2530-422e-94c4-6bfb09556bbf}</Project>
-      <Name>SD.Payex2</Name>
-    </ProjectReference>
     <ProjectReference Include="..\..\Libraries\Nop.Core\Nop.Core.csproj">
       <Project>{6BDA8332-939F-45B7-A25E-7A797260AE59}</Project>
       <Name>Nop.Core</Name>
@@ -105,9 +101,12 @@
       <Private>False</Private>
     </ProjectReference>
     <ProjectReference Include="..\Nop.Plugin.Payments.PayEx\Nop.Plugin.Payments.PayEx.csproj">
-      <Project>{5D49116A-C267-4361-AFBA-1B395362B1EE}</Project>
+      <Project>{5d49116a-c267-4361-afba-1b395362b1ee}</Project>
       <Name>Nop.Plugin.Payments.PayEx</Name>
-      <Private>False</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\SD.Payex2\SD.Payex2.csproj">
+      <Project>{56458f3b-2530-422e-94c4-6bfb09556bbf}</Project>
+      <Name>SD.Payex2</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup />

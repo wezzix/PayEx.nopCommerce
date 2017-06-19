@@ -12,10 +12,6 @@ namespace Nop.Plugin.Payments.PayEx.Data
             Database.SetInitializer<PayExAgreementObjectContext>(null);
         }
 
-        public int Order
-        {
-            //ensure that this task is run first 
-            get { return 0; }
-        }
+        public int Order => 0; // ensure that this task is run first
     }
 }

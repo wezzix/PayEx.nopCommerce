@@ -8,109 +8,107 @@
 @using (Html.BeginForm())
 {
     @Html.AntiForgeryToken()
-    <table class="adminContent">
-    <tr>
-        <td colspan="2">
-            <p>@T("Plugins.Payments.PayEx.CurrencyNotes")</p>
-            <p>@T("Plugins.Payments.PayEx.TransactionCallbackNotes") @Model.TransactionCallbackUrl</p>
-        </td>
-    </tr>
-    <tr>
-        <td colspan="2" width="100%">
-            <hr />
-        </td>
-    </tr>
-        <tr>
-            <td class="adminTitle">
-                @Html.NopLabelFor(model => model.TransactionModeValues):
-            </td>
-            <td class="adminData">
-                @Html.DropDownList("TransactionModeId", Model.TransactionModeValues)
-            </td>
-        </tr>
-        <tr>
-            <td class="adminTitle">
-                @Html.NopLabelFor(model => model.PassProductNamesAndTotals):
-            </td>
-            <td class="adminData">
-                @Html.EditorFor(model => model.PassProductNamesAndTotals)
-                @Html.ValidationMessageFor(model => model.PassProductNamesAndTotals)
-            </td>
-        </tr>
-        <tr>
-            <td class="adminTitle">
-                @Html.NopLabelFor(model => model.AllowCreateAgreement):
-            </td>
-            <td class="adminData">
-                @Html.EditorFor(model => model.AllowCreateAgreement)
-                @Html.ValidationMessageFor(model => model.AllowCreateAgreement)
-            </td>
-        </tr>
-        <tr>
-            <td class="adminTitle">
-                @Html.NopLabelFor(model => model.AgreementMaxAmount):
-            </td>
-            <td class="adminData">
-                @Html.EditorFor(model => model.AgreementMaxAmount)
-                @Html.ValidationMessageFor(model => model.AgreementMaxAmount)
-            </td>
-        </tr>
-        <tr>
-            <td class="adminTitle">
-                @Html.NopLabelFor(model => model.ValidateOrderTotal):
-            </td>
-            <td class="adminData">
-                @Html.EditorFor(model => model.ValidateOrderTotal)
-                @Html.ValidationMessageFor(model => model.ValidateOrderTotal)
-            </td>
-        </tr>
-        <tr>
-            <td class="adminTitle">
-                @Html.NopLabelFor(model => model.AdditionalFee):
-            </td>
-            <td class="adminData">
-                @Html.EditorFor(model => model.AdditionalFee)
-                @Html.ValidationMessageFor(model => model.AdditionalFee)
-            </td>
-        </tr>
-        <tr>
-            <td class="adminTitle">
-                @Html.NopLabelFor(model => model.AccountNumber):
-            </td>
-            <td class="adminData">
-                @Html.EditorFor(model => model.AccountNumber)
-                @Html.ValidationMessageFor(model => model.AccountNumber)
-            </td>
-        </tr>
-        <tr>
-            <td class="adminTitle">
-                @Html.NopLabelFor(model => model.EncryptionKey):
-            </td>
-            <td class="adminData">
-                @Html.EditorFor(model => model.EncryptionKey)
-                @Html.ValidationMessageFor(model => model.EncryptionKey)
-            </td>
-        </tr>
-        <tr>
-            <td class="adminTitle">
-                @Html.NopLabelFor(model => model.UseTestEnvironment):
-            </td>
-            <td class="adminData">
-                @Html.EditorFor(model => model.UseTestEnvironment)
-                @Html.ValidationMessageFor(model => model.UseTestEnvironment)
-            </td>
-        </tr>
-        <tr>
-            <td colspan="2" width="100%">
-                <strong>@(Model.Message)</strong>
-            </td>
-        </tr>
-        <tr>
-            <td colspan="2" width="100%">
-                <button type="submit" name="save" value="save" class="t-button">
-                    @T("Admin.Common.Save")</button>
-            </td>
-        </tr>
-    </table>
-    
+
+    <div class="panel-group">
+        <div class="panel panel-default">
+            <div class="panel-body">
+
+                <p>@T("Plugins.Payments.PayEx.CurrencyNotes")</p>
+                <p>@T("Plugins.Payments.PayEx.TransactionCallbackNotes") @Model.TransactionCallbackUrl</p>
+                <p><strong>@(Model.Message)</strong></p>
+
+                <div class="form-group">
+                    <div class="col-md-3">
+                        @Html.NopLabelFor(model => model.TransactionModeValues)
+                    </div>
+                    <div class="col-md-9">
+                        @Html.NopDropDownListFor(model => model.TransactionModeId, Model.TransactionModeValues)
+                        @Html.ValidationMessageFor(model => model.TransactionModeValues)
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="col-md-3">
+                        @Html.NopLabelFor(model => model.PassProductNamesAndTotals)
+                    </div>
+                    <div class="col-md-9">
+                        @Html.NopEditorFor(model => model.PassProductNamesAndTotals)
+                        @Html.ValidationMessageFor(model => model.PassProductNamesAndTotals)
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="col-md-3">
+                        @Html.NopLabelFor(model => model.AllowCreateAgreement)
+                    </div>
+                    <div class="col-md-9">
+                        @Html.NopEditorFor(model => model.AllowCreateAgreement)
+                        @Html.ValidationMessageFor(model => model.AllowCreateAgreement)
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="col-md-3">
+                        @Html.NopLabelFor(model => model.AgreementMaxAmount)
+                    </div>
+                    <div class="col-md-9">
+                        @Html.NopEditorFor(model => model.AgreementMaxAmount)
+                        @Html.ValidationMessageFor(model => model.AgreementMaxAmount)
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="col-md-3">
+                        @Html.NopLabelFor(model => model.ValidateOrderTotal)
+                    </div>
+                    <div class="col-md-9">
+                        @Html.NopEditorFor(model => model.ValidateOrderTotal)
+                        @Html.ValidationMessageFor(model => model.ValidateOrderTotal)
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="col-md-3">
+                        @Html.NopLabelFor(model => model.AdditionalFee)
+                    </div>
+                    <div class="col-md-9">
+                        @Html.NopEditorFor(model => model.AdditionalFee)
+                        @Html.ValidationMessageFor(model => model.AdditionalFee)
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="col-md-3">
+                        @Html.NopLabelFor(model => model.AccountNumber)
+                    </div>
+                    <div class="col-md-9">
+                        @Html.NopEditorFor(model => model.AccountNumber)
+                        @Html.ValidationMessageFor(model => model.AccountNumber)
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="col-md-3">
+                        @Html.NopLabelFor(model => model.EncryptionKey)
+                    </div>
+                    <div class="col-md-9">
+                        @Html.NopEditorFor(model => model.EncryptionKey)
+                        @Html.ValidationMessageFor(model => model.EncryptionKey)
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="col-md-3">
+                        @Html.NopLabelFor(model => model.UseTestEnvironment)
+                    </div>
+                    <div class="col-md-9">
+                        @Html.NopEditorFor(model => model.UseTestEnvironment)
+                        @Html.ValidationMessageFor(model => model.UseTestEnvironment)
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="col-md-3">
+                        &nbsp;
+                    </div>
+                    <div class="col-md-9">
+                        <button type="submit" name="save" class="btn btn-primary">
+                            @T("Admin.Common.Save")
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 }

@@ -44,6 +44,7 @@ namespace Nop.Plugin.Payments.PayEx
         private readonly IOrderService _orderService;
         private readonly ILocalizationService _localizationService;
         private readonly IStoreContext _storeContext;
+        private readonly IWorkContext _workContext;
         public static string AgreementRefKey = "AgreementRef";
 
         #endregion
@@ -63,7 +64,8 @@ namespace Nop.Plugin.Payments.PayEx
             ILogger logger,
             IOrderService orderService,
             ILocalizationService localizationService,
-            IStoreContext storeContext)
+            IStoreContext storeContext,
+            IWorkContext workContext)
         {
             this._payExPaymentSettings = payExPaymentSettings;
             this._payExAgreementObjectContext = payExAgreementObjectContext;
@@ -78,6 +80,7 @@ namespace Nop.Plugin.Payments.PayEx
             this._orderService = orderService;
             this._localizationService = localizationService;
             _storeContext = storeContext;
+            _workContext = workContext;
         }
 
         #endregion
@@ -88,7 +91,7 @@ namespace Nop.Plugin.Payments.PayEx
         /// This determines the default payment method shown in the PayEx payment gateway.
         /// It can be overridden to show a different payment method.
         /// </summary>
-        protected virtual string PaymentView { get { return PaymentViewCreditCard; } }
+        protected virtual string PaymentView => PaymentViewCreditCard;
 
         protected virtual PayexInterface.PurchaseOperation GetPurchaseOperation()
         {
@@ -334,7 +337,7 @@ namespace Nop.Plugin.Payments.PayEx
                         new NopException(agreementResult.GetErrorDescription()), order.Customer);
             }
 #endif
-
+            
             // Initialize the purchase and get the redirect URL
             InitializeRequest request = new InitializeRequest()
             {
@@ -351,6 +354,7 @@ namespace Nop.Plugin.Payments.PayEx
                 ReturnURL = returnUrl,
                 CancelUrl = cancelUrl,
                 View = PaymentView,
+                ClientLanguage = _workContext.WorkingLanguage?.LanguageCulture,
             };
             InitializeResult result = payex.Initialize(request);
 
@@ -687,8 +691,8 @@ You will be prompted to enter your 3D secure code via an external link to your b
 
         protected void DeleteLocaleResource(string name)
         {
-            this.DeletePluginLocaleResource(string.Format("Plugins.Payments.PayEx.{0}", name));
-            this.DeletePluginLocaleResource(string.Format("Plugins.Payments.PayEx.{0}.Hint", name));
+            this.DeletePluginLocaleResource($"Plugins.Payments.PayEx.{name}");
+            this.DeletePluginLocaleResource($"Plugins.Payments.PayEx.{name}.Hint");
         }
 
         #endregion
@@ -698,37 +702,39 @@ You will be prompted to enter your 3D secure code via an external link to your b
         /// <summary>
         /// Gets a value indicating whether capture is supported
         /// </summary>
-        public bool SupportCapture { get { return true; } }
+        public bool SupportCapture => true;
 
         /// <summary>
         /// Gets a value indicating whether partial refund is supported
         /// </summary>
-        public bool SupportPartiallyRefund { get { return true; } }
+        public bool SupportPartiallyRefund => true;
 
         /// <summary>
         /// Gets a value indicating whether refund is supported
         /// </summary>
-        public bool SupportRefund { get { return true; } }
+        public bool SupportRefund => true;
 
         /// <summary>
         /// Gets a value indicating whether void is supported
         /// </summary>
-        public bool SupportVoid { get { return true; } }
+        public bool SupportVoid => true;
 
         /// <summary>
         /// Gets a recurring payment type of payment method
         /// </summary>
-        public RecurringPaymentType RecurringPaymentType { get { return RecurringPaymentType.NotSupported; } }
+        public RecurringPaymentType RecurringPaymentType => RecurringPaymentType.NotSupported;
 
         /// <summary>
         /// Gets a payment method type
         /// </summary>
-        public PaymentMethodType PaymentMethodType { get { return PaymentMethodType.Redirection; } }
+        public PaymentMethodType PaymentMethodType => PaymentMethodType.Redirection;
 
-        public virtual bool SkipPaymentInfo
-        {
-            get { return !_payExPaymentSettings.AllowCreateAgreement; }
-        }
+        public virtual bool SkipPaymentInfo => !_payExPaymentSettings.AllowCreateAgreement && !RopcEnabled;
+
+        public virtual string PaymentMethodDescription
+            => _localizationService.GetResource("Plugins.Payments.PayEx.RedirectionTip");
+
+        protected bool RopcEnabled => _settingService.GetSettingByKey("realonepagecheckoutsettings.enablerealonepagecheckout", false, _storeContext.CurrentStore.Id, true);
 
         #endregion
     }

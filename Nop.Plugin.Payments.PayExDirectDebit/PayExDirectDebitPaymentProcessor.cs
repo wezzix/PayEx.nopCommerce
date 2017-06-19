@@ -19,8 +19,8 @@ namespace Nop.Plugin.Payments.PayExDirectDebit
     /// </summary>
     public class PayExDirectDebitPaymentProcessor : Nop.Plugin.Payments.PayEx.PayExPaymentProcessor
     {
-        public PayExDirectDebitPaymentProcessor(PayExPaymentSettings payExPaymentSettings, PayExAgreementObjectContext payExAgreementObjectContext, ISettingService settingService, ICurrencyService currencyService, CurrencySettings currencySettings, IWebHelper webHelper, ICheckoutAttributeParser checkoutAttributeParser, ITaxService taxService, HttpContextBase httpContext, ILogger logger, IOrderService orderService, ILocalizationService localizationService, IStoreContext storeContext)
-            : base(payExPaymentSettings, payExAgreementObjectContext, settingService, currencyService, currencySettings, webHelper, checkoutAttributeParser, taxService, httpContext, logger, orderService, localizationService, storeContext)
+        public PayExDirectDebitPaymentProcessor(PayExPaymentSettings payExPaymentSettings, PayExAgreementObjectContext payExAgreementObjectContext, ISettingService settingService, ICurrencyService currencyService, CurrencySettings currencySettings, IWebHelper webHelper, ICheckoutAttributeParser checkoutAttributeParser, ITaxService taxService, HttpContextBase httpContext, ILogger logger, IOrderService orderService, ILocalizationService localizationService, IStoreContext storeContext, IWorkContext workContext)
+            : base(payExPaymentSettings, payExAgreementObjectContext, settingService, currencyService, currencySettings, webHelper, checkoutAttributeParser, taxService, httpContext, logger, orderService, localizationService, storeContext, workContext)
         {
             
         }
@@ -42,7 +42,7 @@ namespace Nop.Plugin.Payments.PayExDirectDebit
         /// This determines the default payment method shown in the PayEx payment gateway.
         /// It can be overridden to show a different payment method.
         /// </summary>
-        protected override string PaymentView { get { return "DIRECTDEBIT"; } }
+        protected override string PaymentView => "DIRECTDEBIT";
 
         #region BasePlugin Methods
 
@@ -64,9 +64,6 @@ namespace Nop.Plugin.Payments.PayExDirectDebit
 
         #endregion
 
-        public override bool SkipPaymentInfo
-        {
-            get { return true; }
-        }
+        public override bool SkipPaymentInfo => !RopcEnabled;
     }
 }

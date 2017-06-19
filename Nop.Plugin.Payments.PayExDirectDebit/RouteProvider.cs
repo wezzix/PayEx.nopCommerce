@@ -14,6 +14,6 @@ namespace Nop.Plugin.Payments.PayExDirectDebit
                  new[] { "Nop.Plugin.Payments.PayExDirectDebit.Controllers" }
             );
         }
-        public int Priority { get { return 0; } }
+        public int Priority => 0;
     }
 }

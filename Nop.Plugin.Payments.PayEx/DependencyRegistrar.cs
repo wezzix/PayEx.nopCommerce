@@ -44,7 +44,7 @@ namespace Nop.Plugin.Payments.PayEx
 
         #region Public Properties
 
-        public int Order { get { return 0; } }
+        public int Order => 0;
 
         #endregion
 

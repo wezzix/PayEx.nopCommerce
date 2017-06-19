@@ -14,6 +14,6 @@ namespace Nop.Plugin.Payments.PayEx
                  new[] { "Nop.Plugin.Payments.PayEx.Controllers" }
             );
         }
-        public int Priority { get { return 0; } }
+        public int Priority => 0;
     }
 }
