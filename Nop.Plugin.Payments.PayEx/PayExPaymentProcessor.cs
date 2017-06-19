@@ -130,11 +130,11 @@ namespace Nop.Plugin.Payments.PayEx
         {
             //get the items in the cart
             decimal cartTotal = decimal.Zero;
-            var cartItems = order.OrderProductVariants;
+            var cartItems = order.OrderItems;
             int itemIndex = 1;
             foreach (var item in cartItems)
             {
-                AddOrderLine(payex, orderRef, item.ProductVariant.Sku ?? string.Format("{0}", itemIndex++), item.ProductVariant.FullProductName, item.Quantity, item.PriceInclTax);
+                AddOrderLine(payex, orderRef, item.Product.Sku ?? string.Format("{0}", itemIndex++), item.Product.Name, item.Quantity, item.PriceInclTax);
                 cartTotal += item.PriceInclTax;
             }
 

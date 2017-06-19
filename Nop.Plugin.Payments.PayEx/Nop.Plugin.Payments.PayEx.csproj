@@ -36,16 +36,10 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Autofac">
-      <HintPath>..\..\packages\Autofac.3.0.2\lib\net40\Autofac.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Autofac.Configuration">
-      <HintPath>..\..\packages\Autofac.3.0.2\lib\net40\Autofac.Configuration.dll</HintPath>
-      <Private>False</Private>
+      <HintPath>..\..\packages\Autofac.3.1.1\lib\net40\Autofac.dll</HintPath>
     </Reference>
     <Reference Include="Autofac.Integration.Mvc">
-      <HintPath>..\..\packages\Autofac.Mvc4.3.0.0\lib\net40\Autofac.Integration.Mvc.dll</HintPath>
-      <Private>False</Private>
+      <HintPath>..\..\packages\Autofac.Mvc4.3.1.0\lib\net40\Autofac.Integration.Mvc.dll</HintPath>
     </Reference>
     <Reference Include="EntityFramework">
       <HintPath>..\..\packages\EntityFramework.5.0.0\lib\net45\EntityFramework.dll</HintPath>
@@ -112,6 +106,8 @@
     <EmbeddedResource Include="Views\PaymentPayEx\Configure.cshtml" />
     <EmbeddedResource Include="Views\PaymentPayEx\PaymentInfo.cshtml" />
     <EmbeddedResource Include="Views\PaymentPayEx\PaymentFailed.cshtml" />
+    <None Include="app.config" />
+    <None Include="packages.config" />
     <None Include="web.config" />
   </ItemGroup>
   <ItemGroup>
