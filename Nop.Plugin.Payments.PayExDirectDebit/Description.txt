@@ -1,0 +1,8 @@
+﻿Group: Payment methods
+FriendlyName: Direct Debit
+SystemName: Payments.PayExDirectDebit
+Version: 1.00
+SupportedVersions: 3.00
+Author: Markus Kvist
+DisplayOrder: 11
+FileName: Nop.Plugin.Payments.PayExDirectDebit.dll
