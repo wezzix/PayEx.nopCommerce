@@ -19,8 +19,8 @@ namespace Nop.Plugin.Payments.PayExDirectDebit
     /// </summary>
     public class PayExDirectDebitPaymentProcessor : Nop.Plugin.Payments.PayEx.PayExPaymentProcessor
     {
-        public PayExDirectDebitPaymentProcessor(PayExPaymentSettings payExPaymentSettings, PayExAgreementObjectContext payExAgreementObjectContext, ISettingService settingService, ICurrencyService currencyService, CurrencySettings currencySettings, StoreInformationSettings storeInformationSettings, IStoreContext storeContext, IWebHelper webHelper, ICheckoutAttributeParser checkoutAttributeParser, ITaxService taxService, HttpContextBase httpContext, ILogger logger, IOrderService orderService, ILocalizationService localizationService)
-            : base(payExPaymentSettings, payExAgreementObjectContext, settingService, currencyService, currencySettings, storeInformationSettings, storeContext, webHelper, checkoutAttributeParser, taxService, httpContext, logger, orderService, localizationService)
+        public PayExDirectDebitPaymentProcessor(PayExPaymentSettings payExPaymentSettings, PayExAgreementObjectContext payExAgreementObjectContext, ISettingService settingService, ICurrencyService currencyService, CurrencySettings currencySettings, IWebHelper webHelper, ICheckoutAttributeParser checkoutAttributeParser, ITaxService taxService, HttpContextBase httpContext, ILogger logger, IOrderService orderService, ILocalizationService localizationService, IStoreContext storeContext)
+            : base(payExPaymentSettings, payExAgreementObjectContext, settingService, currencyService, currencySettings, webHelper, checkoutAttributeParser, taxService, httpContext, logger, orderService, localizationService, storeContext)
         {
             
         }
@@ -63,5 +63,10 @@ namespace Nop.Plugin.Payments.PayExDirectDebit
         }
 
         #endregion
+
+        public override bool SkipPaymentInfo
+        {
+            get { return true; }
+        }
     }
 }

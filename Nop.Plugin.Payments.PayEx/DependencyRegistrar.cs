@@ -1,6 +1,5 @@
 using Autofac;
 using Autofac.Core;
-using Autofac.Integration.Mvc;
 using Nop.Core.Data;
 using Nop.Core.Infrastructure;
 using Nop.Core.Infrastructure.DependencyManagement;
@@ -57,15 +56,15 @@ namespace Nop.Plugin.Payments.PayEx
             DataSettings dataSettings = dataSettingsManager.LoadSettings();
 
             // Register custom object context
-            builder.Register<IDbContext>(c => RegisterIDbContext(c, dataSettings)).Named<IDbContext>(CONTEXT_NAME).InstancePerHttpRequest();
-            builder.Register(c => RegisterIDbContext(c, dataSettings)).InstancePerHttpRequest();
+            builder.Register<IDbContext>(c => RegisterIDbContext(c, dataSettings)).Named<IDbContext>(CONTEXT_NAME).InstancePerLifetimeScope();
+            builder.Register(c => RegisterIDbContext(c, dataSettings)).InstancePerLifetimeScope();
 
             // Register services
             builder.RegisterType<PayExAgreementService>().As<IPayExAgreementService>();
 
             // Override the repository with our custom context
             builder.RegisterType<EfRepository<PayExAgreement>>().As<IRepository<PayExAgreement>>()
-                .WithParameter(ResolvedParameter.ForNamed<IDbContext>(CONTEXT_NAME)).InstancePerHttpRequest();
+                .WithParameter(ResolvedParameter.ForNamed<IDbContext>(CONTEXT_NAME)).InstancePerLifetimeScope();
         }
 
         #endregion

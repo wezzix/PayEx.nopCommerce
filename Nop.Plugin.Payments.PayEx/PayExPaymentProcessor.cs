@@ -35,8 +35,6 @@ namespace Nop.Plugin.Payments.PayEx
         private readonly ISettingService _settingService;
         private readonly ICurrencyService _currencyService;
         private readonly CurrencySettings _currencySettings;
-        private readonly StoreInformationSettings _storeInformationSettings;
-        private readonly IStoreContext _storeContext;
         private readonly IWebHelper _webHelper;
         private readonly ICheckoutAttributeParser _checkoutAttributeParser;
         private readonly ITaxService _taxService;
@@ -44,6 +42,7 @@ namespace Nop.Plugin.Payments.PayEx
         private readonly ILogger _logger;
         private readonly IOrderService _orderService;
         private readonly ILocalizationService _localizationService;
+        private readonly IStoreContext _storeContext;
 
         #endregion
 
@@ -55,23 +54,20 @@ namespace Nop.Plugin.Payments.PayEx
             ISettingService settingService,
             ICurrencyService currencyService,
             CurrencySettings currencySettings,
-            StoreInformationSettings storeInformationSettings,
-            IStoreContext storeContext,
             IWebHelper webHelper,
             ICheckoutAttributeParser checkoutAttributeParser,
             ITaxService taxService,
             HttpContextBase httpContext,
             ILogger logger,
             IOrderService orderService,
-            ILocalizationService localizationService)
+            ILocalizationService localizationService,
+            IStoreContext storeContext)
         {
             this._payExPaymentSettings = payExPaymentSettings;
             this._payExAgreementObjectContext = payExAgreementObjectContext;
             this._settingService = settingService;
             this._currencyService = currencyService;
             this._currencySettings = currencySettings;
-            this._storeInformationSettings = storeInformationSettings;
-            this._storeContext = storeContext;
             this._webHelper = webHelper;
             this._checkoutAttributeParser = checkoutAttributeParser;
             this._taxService = taxService;
@@ -79,6 +75,7 @@ namespace Nop.Plugin.Payments.PayEx
             this._logger = logger;
             this._orderService = orderService;
             this._localizationService = localizationService;
+            _storeContext = storeContext;
         }
 
         #endregion
@@ -236,7 +233,7 @@ namespace Nop.Plugin.Payments.PayEx
                     Amount = processPaymentRequest.OrderTotal,
                     CurrencyCode = currencyCode,
                     OrderID = processPaymentRequest.OrderGuid.ToString(),
-                    ProductNumber = "order",
+                    ProductNumber = "ncOrder",
                     Description = description,
                     AgreementRef = agreementRef,
                 };

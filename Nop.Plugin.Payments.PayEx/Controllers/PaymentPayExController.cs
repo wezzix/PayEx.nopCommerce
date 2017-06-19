@@ -21,7 +21,7 @@ using SD.Payex2.Entities;
 
 namespace Nop.Plugin.Payments.PayEx.Controllers
 {
-    public class PaymentPayExController : BaseNopPaymentController
+    public class PaymentPayExController : BasePaymentController
     {
         #region Private Member Variables
 
@@ -263,7 +263,7 @@ namespace Nop.Plugin.Payments.PayEx.Controllers
 
             PopulateConfigurationModel(model);
 
-            return View("Nop.Plugin.Payments.PayEx.Views.PaymentPayEx.Configure", model);
+            return View("~/Plugins/Payments.PayEx/Views/PaymentPayEx/Configure.cshtml", model);
         }
 
         [HttpPost]
@@ -288,7 +288,7 @@ namespace Nop.Plugin.Payments.PayEx.Controllers
 
             PopulateConfigurationModel(model);
 
-            return View("Nop.Plugin.Payments.PayEx.Views.PaymentPayEx.Configure", model);
+            return View("~/Plugins/Payments.PayEx/Views/PaymentPayEx/Configure.cshtml", model);
         }
 
         [ChildActionOnly]
@@ -310,7 +310,7 @@ namespace Nop.Plugin.Payments.PayEx.Controllers
             }
 #endif
 
-            return View("Nop.Plugin.Payments.PayEx.Views.PaymentPayEx.PaymentInfo", model);
+            return View("~/Plugins/Payments.PayEx/Views/PaymentPayEx/PaymentInfo.cshtml", model);
         }
 
         [NonAction]
@@ -346,7 +346,7 @@ namespace Nop.Plugin.Payments.PayEx.Controllers
             else
             {
                 PaymentFailedModel model = new PaymentFailedModel() { OrderId = orderId };
-                return View("Nop.Plugin.Payments.PayEx.Views.PaymentPayEx.PaymentFailed", model);
+                return View("~/Plugins/Payments.PayEx/Views/PaymentPayEx/PaymentFailed.cshtml", model);
             }
         }
 
