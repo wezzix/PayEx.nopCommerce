@@ -1,5 +1,6 @@
 using Autofac;
 using Autofac.Core;
+using Nop.Core.Configuration;
 using Nop.Core.Data;
 using Nop.Core.Infrastructure;
 using Nop.Core.Infrastructure.DependencyManagement;
@@ -49,7 +50,7 @@ namespace Nop.Plugin.Payments.PayEx
 
         #region Public Methods
 
-        public void Register(ContainerBuilder builder, ITypeFinder typeFinder)
+        public void Register(ContainerBuilder builder, ITypeFinder typeFinder, NopConfig config)
         {
             // Load custom data settings
             var dataSettingsManager = new DataSettingsManager();

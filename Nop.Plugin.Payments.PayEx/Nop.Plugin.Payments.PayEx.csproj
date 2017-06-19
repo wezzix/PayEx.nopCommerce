@@ -85,7 +85,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SD.Payex2\SD.Payex2.csproj">
-      <Project>{56458F3B-2530-422E-94C4-6BFB09556BBF}</Project>
+      <Project>{56458f3b-2530-422e-94c4-6bfb09556bbf}</Project>
       <Name>SD.Payex2</Name>
     </ProjectReference>
     <ProjectReference Include="..\..\Libraries\Nop.Core\Nop.Core.csproj">
