@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data.Entity;
 using System.Data.Entity.Infrastructure;
 using System.Linq;
+using Nop.Core;
 using Nop.Data;
 
 namespace Nop.Plugin.Payments.PayEx.Data
@@ -30,24 +31,13 @@ namespace Nop.Plugin.Payments.PayEx.Data
 
         public void Install()
         {
-            //It's required to set initializer to null (for SQL Server Compact).
-            //otherwise, you'll get something like "The model backing the 'your context name' context has changed since the database was created. Consider using Code First Migrations to update the database"
-            Database.SetInitializer<PayExAgreementObjectContext>(null);
-
             Database.ExecuteSqlCommand(CreateDatabaseInstallationScript());
             SaveChanges();
         }
 
         public void Uninstall()
         {
-            Database.SetInitializer<PayExAgreementObjectContext>(null);
-            string tableName = "PayExAgreement";
-            if (Database.SqlQuery<int>("SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = {0}", tableName).Any<int>())
-            {
-                var dbScript = "DROP TABLE [" + tableName + "]";
-                Database.ExecuteSqlCommand(dbScript);
-            }
-            SaveChanges();
+            this.DropPluginTable("PayExAgreement");
         }
 
         #region IDbContext Members
@@ -57,7 +47,7 @@ namespace Nop.Plugin.Payments.PayEx.Data
             return base.Set<TEntity>();
         }
 
-        public IList<TEntity> ExecuteStoredProcedureList<TEntity>(string commandText, params object[] parameters) where TEntity : Core.BaseEntity, new()
+        public IList<TEntity> ExecuteStoredProcedureList<TEntity>(string commandText, params object[] parameters) where TEntity : BaseEntity, new()
         {
             throw new NotImplementedException();
         }
@@ -67,7 +57,7 @@ namespace Nop.Plugin.Payments.PayEx.Data
             throw new NotImplementedException();
         }
 
-        public int ExecuteSqlCommand(string sql, int? timeout, params object[] parameters)
+        public int ExecuteSqlCommand(string sql, bool doNotEnsureTransaction = false, int? timeout = null, params object[] parameters)
         {
             throw new NotImplementedException();
         }

@@ -2,7 +2,7 @@
 FriendlyName: Credit Card
 SystemName: Payments.PayEx
 Version: 1.00
-SupportedVersions: 3.10
+SupportedVersions: 3.20
 Author: Markus Kvist
 DisplayOrder: 10
 FileName: Nop.Plugin.Payments.PayEx.dll

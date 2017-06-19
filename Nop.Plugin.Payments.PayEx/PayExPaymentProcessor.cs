@@ -707,6 +707,11 @@ You will be prompted to enter your 3D secure code via an external link to your b
         /// </summary>
         public PaymentMethodType PaymentMethodType { get { return PaymentMethodType.Redirection; } }
 
+        public virtual bool SkipPaymentInfo
+        {
+            get { return !_payExPaymentSettings.AllowCreateAgreement; }
+        }
+
         #endregion
     }
 }
