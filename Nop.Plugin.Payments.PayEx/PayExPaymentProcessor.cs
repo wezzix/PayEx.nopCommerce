@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text;
 using System.Web;
 using System.Web.Routing;
@@ -43,6 +44,7 @@ namespace Nop.Plugin.Payments.PayEx
         private readonly IOrderService _orderService;
         private readonly ILocalizationService _localizationService;
         private readonly IStoreContext _storeContext;
+        public static string AgreementRefKey = "AgreementRef";
 
         #endregion
 
@@ -196,6 +198,11 @@ namespace Nop.Plugin.Payments.PayEx
 
         #region IPaymentMethod Methods
 
+        public bool HidePaymentMethod(IList<ShoppingCartItem> cart)
+        {
+            return false;
+        }
+
         /// <summary>
         /// Gets additional handling fee
         /// </summary>
@@ -204,6 +211,15 @@ namespace Nop.Plugin.Payments.PayEx
         public decimal GetAdditionalHandlingFee(System.Collections.Generic.IList<ShoppingCartItem> cart)
         {
             return _payExPaymentSettings.AdditionalFee;
+        }
+
+        private string TryGetAgreementRef(Dictionary<string, object> customValues)
+        {
+            object agreementRefObject;
+            if (!customValues.TryGetValue(AgreementRefKey, out agreementRefObject) || agreementRefObject == null)
+                return null;
+
+            return agreementRefObject.ToString();
         }
 
         /// <summary>
@@ -222,8 +238,13 @@ namespace Nop.Plugin.Payments.PayEx
 
 #if AGREEMENT
             // Use an existing agreement to make the payment, if the customer chose this option.
-            string agreementRef = processPaymentRequest.PurchaseOrderNumber;
-            if (!string.IsNullOrEmpty(agreementRef) && agreementRef != "new")
+            object agreementRefObject;
+            if (!processPaymentRequest.CustomValues.TryGetValue(AgreementRefKey, out agreementRefObject) || agreementRefObject == null)
+                return result;
+
+            var agreementRef = TryGetAgreementRef(processPaymentRequest.CustomValues);
+            if (!string.IsNullOrEmpty(agreementRef)
+                && agreementRef != "new")
             {
                 string currencyCode = _currencyService.GetCurrencyById(_currencySettings.PrimaryStoreCurrencyId).CurrencyCode;
                 string description = string.Format("{0} - Order", _storeContext.CurrentStore.Name);
@@ -295,8 +316,8 @@ namespace Nop.Plugin.Payments.PayEx
 #if AGREEMENT
             // If the customer wishes to save his payment details, we make an agreement. 
             // This should be saved later in the complete operation, if it occurs.
-            string agreementOptions = order.PurchaseOrderNumber;
-            if (agreementOptions == "new")
+            agreementRef = TryGetAgreementRef(order.DeserializeCustomValues());
+            if (agreementRef == "new")
             {
                 CreateAgreementRequest agreementRequest = new CreateAgreementRequest()
                 {

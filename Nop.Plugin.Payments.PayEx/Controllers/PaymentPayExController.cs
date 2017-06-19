@@ -329,10 +329,10 @@ namespace Nop.Plugin.Payments.PayEx.Controllers
                 {
                     PayExAgreement agreement = _payExAgreementService.GetById(agreementId);
                     if (agreement != null && agreement.CustomerId == _workContext.CurrentCustomer.Id)
-                        paymentInfo.PurchaseOrderNumber = agreement.AgreementRef;
+                        paymentInfo.CustomValues.Add(PayExPaymentProcessor.AgreementRefKey, agreement.AgreementRef);
                 }
                 else if (createAgreement)
-                    paymentInfo.PurchaseOrderNumber = "new";
+                    paymentInfo.CustomValues.Add(PayExPaymentProcessor.AgreementRefKey, "new");
             }
 #endif
             return paymentInfo;
