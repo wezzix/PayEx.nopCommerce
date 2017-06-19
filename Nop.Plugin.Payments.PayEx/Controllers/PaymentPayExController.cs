@@ -10,6 +10,7 @@ using Nop.Core.Domain.Payments;
 using Nop.Plugin.Payments.PayEx.Domain;
 using Nop.Plugin.Payments.PayEx.Models;
 using Nop.Plugin.Payments.PayEx.Services;
+using Nop.Services;
 using Nop.Services.Configuration;
 using Nop.Services.Logging;
 using Nop.Services.Orders;
