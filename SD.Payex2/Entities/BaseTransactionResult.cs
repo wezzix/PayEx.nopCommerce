@@ -27,5 +27,10 @@
         /// Gets a value indicating if both the result and the transaction was successful.
         /// </summary>
         public virtual bool IsTransactionSuccessful { get; protected set; }
+
+        public override string GetErrorDescription()
+        {
+            return $"{base.GetErrorDescription()} ({TransactionStatus})";
+        }
     }
 }
