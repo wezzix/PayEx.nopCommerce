@@ -63,9 +63,12 @@ namespace SD.Payex2
 
         private PxOrderSoapClient GetPxOrderClient()
         {
+			//PayEx requires TLS 1.2 since 2017.11.20 at 09:00
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+			
             Uri baseAddress;
             if (UseTestEnvironment)
-                baseAddress = new Uri("https://test-external.payex.com/pxorder/pxorder.asmx");
+                baseAddress = new Uri("https://external.externaltest.payex.com/pxorder/pxorder.asmx");
             else
                 baseAddress = new Uri("https://external.payex.com/pxorder/pxorder.asmx");
             var payexOrder = new PxOrderSoapClient(
@@ -77,9 +80,12 @@ namespace SD.Payex2
 
         private PxAgreementSoapClient GetPxAgreementClient()
         {
+			//PayEx requires TLS 1.2 since 2017.11.20 at 09:00
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+			
             Uri baseAddress;
             if (UseTestEnvironment)
-                baseAddress = new Uri("https://test-external.payex.com/pxagreement/pxagreement.asmx");
+                baseAddress = new Uri("https://external.externaltest.payex.com/pxagreement/pxagreement.asmx");
             else
                 baseAddress = new Uri("https://external.payex.com/pxagreement/pxagreement.asmx");
             var payexOrder = new PxAgreementSoapClient(
