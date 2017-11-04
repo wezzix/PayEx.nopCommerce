@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net;
 using System.ServiceModel;
 using System.Text;
 using SD.Payex2.Crypto;
