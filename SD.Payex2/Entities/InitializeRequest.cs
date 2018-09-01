@@ -87,5 +87,10 @@
         /// is specified, the default language for client UI is used.
         /// </summary>
         public string ClientLanguage { get; set; }
+
+        /// <summary>
+        /// Used by Swish. MSISDN=Customers mobile phone number. For example: 46701234567.
+        /// </summary>
+        public string MobilePhoneNumber { get; set; }
     }
 }

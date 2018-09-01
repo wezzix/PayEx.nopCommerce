@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using System.Web.Mvc;
 using Nop.Core;
 using Nop.Core.Domain.Customers;
@@ -73,149 +74,168 @@ namespace Nop.Plugin.Payments.PayEx.Controllers
         }
 
         [NonAction]
-        public bool DoComplete(string orderRef, out int orderId)
+        public async Task<Order> DoComplete(string orderRef, bool isCallback)
         {
-            orderId = 0;
-
             // Get our payment processor
             var processor = _paymentService.LoadPaymentMethodBySystemName(PaymentSystemName) as PayExPaymentProcessor;
             if (processor == null ||
                 !processor.IsPaymentMethodActive(_paymentSettings) || !processor.PluginDescriptor.Installed)
                 throw new NopException("PayEx module is not active or cannot be loaded.");
 
-            if (!string.IsNullOrWhiteSpace(orderRef))
+            if (string.IsNullOrWhiteSpace(orderRef))
+                return null;
+
+            // Call complete
+            CompleteResult result = processor.Complete(orderRef);
+
+            // Attempt to get the order associated with the transaction.
+            Order order = null;
+            if (!string.IsNullOrEmpty(result.OrderID)
+                && Guid.TryParse(result.OrderID, out var orderGuid))
+                order = _orderService.GetOrderByGuid(orderGuid);
+
+            // If the transaction is pending, then we are expecting a callback to this method within 3 seconds due to occational delay from Swish in m-commerce flow.
+            // Upon completion in separate process, the order PaymentStatus will have changed from Pending to Paid or Failed.
+            if (order != null && result.Pending == true && !isCallback)
             {
-                // Call complete
-                CompleteResult result = processor.Complete(orderRef);
-
-                // Attempt to get the order associated with the transaction.
-                Order order = null;
-                if (!string.IsNullOrEmpty(result.OrderID))
+                for (int i = 0; i < 5; i++)
                 {
-                    Guid orderGuid;
-                    if (Guid.TryParse(result.OrderID, out orderGuid))
-                        order = _orderService.GetOrderByGuid(orderGuid);
+                    await Task.Delay(1000);
+                    order = _orderService.GetOrderById(order.Id);
+                    // If the order status changes from pending then the below code has already been run by a separate process. We are done.
+                    if (order.PaymentStatus != PaymentStatus.Pending)
+                        return order;
                 }
 
-                if (order != null)
-                    orderId = order.Id;
-
-                if (result.IsTransactionSuccessful && order != null)
-                {
-                    // Add order note
-                    var note = new StringBuilder();
-                    note.AppendLine("PayEx: Complete succeded");
-                    note.AppendLine("PaymentMethod: " + result.PaymentMethod);
-                    note.AppendLine(string.Format("Amount: {0:n2}", result.Amount));
-                    note.AppendLine("TransactionNumber: " + result.TransactionNumber);
-                    note.AppendLine("TransactionStatus: " + result.TransactionStatus);
-                    order.OrderNotes.Add(new OrderNote()
-                    {
-                        Note = note.ToString(),
-                        DisplayToCustomer = false,
-                        CreatedOnUtc = DateTime.UtcNow
-                    });
-                    _orderService.UpdateOrder(order);
-
-                    // Validate order total
-                    if (_payExPaymentSettings.ValidateOrderTotal && !Math.Round(result.Amount.Value, 2).Equals(Math.Round(order.OrderTotal, 2)))
-                    {
-                        string errorStr = string.Format("PayEx Complete. Returned order total {0:n2} doesn't equal order total {1:n2}", result.Amount, order.OrderTotal);
-                        _logger.Error(errorStr, customer: order.Customer);
-
-                        return false;
-                    }
-
-                    // Check if the transaction is based on an agreement
-                    if (!string.IsNullOrEmpty(result.AgreementRef))
-                    {
-                        order.SubscriptionTransactionId = result.AgreementRef;
-                        // Check if the agreement already exists
-                        PayExAgreement agreement = _payExAgreementService.GetByAgreementRef(result.AgreementRef);
-                        if (agreement == null)
-                        {
-                            // Save the new agreement
-                            agreement = new PayExAgreement()
-                            {
-                                AgreementRef = result.AgreementRef,
-                                CustomerId = order.Customer.Id,
-                                MaxAmount = _payExPaymentSettings.AgreementMaxAmount,
-                                Name = result.MaskedNumber ?? "Sparat kort", // TODO
-                                PaymentMethod = result.PaymentMethod,
-                                PaymentMethodExpireDate = result.PaymentMethodExpireDate,
-                                PaymentMethodSystemName = order.PaymentMethodSystemName,
-                                NumberOfUsages = 1,
-                                LastUsedDate = DateTime.UtcNow,
-                                CreatedDate = DateTime.UtcNow,
-                            };
-                            _payExAgreementService.InsertPayExAgreement(agreement);
-                        }
-                        else
-                        {
-                            // Log usage
-                            agreement.NumberOfUsages++;
-                            agreement.LastUsedDate = DateTime.UtcNow;
-                            _payExAgreementService.UpdatePayExAgreement(agreement);
-                        }
-                    }
-
-                    // Update order payment status
-                    switch (result.TransactionStatus.Value)
-                    {
-                        case Enumerations.TransactionStatusCode.Sale:
-                        case Enumerations.TransactionStatusCode.Capture: // Capture should not happen here
-                            order.CaptureTransactionId = result.TransactionNumber;
-                            _orderService.UpdateOrder(order);
-                            // Mark order as paid
-                            if (result.TransactionStatus == Enumerations.TransactionStatusCode.Sale &&
-                                _orderProcessingService.CanMarkOrderAsPaid(order))
-                                _orderProcessingService.MarkOrderAsPaid(order);
-                            break;
-                        case Enumerations.TransactionStatusCode.Authorize:
-                            order.AuthorizationTransactionId = result.TransactionNumber;
-                            _orderService.UpdateOrder(order);
-                            if (_orderProcessingService.CanMarkOrderAsAuthorized(order))
-                                _orderProcessingService.MarkAsAuthorized(order);
-                            break;
-                        default:
-                            break;
-                    }
-                    return true;
-                }
-                //else // Transaction not successful
-                //{
-                //    string note = "Transaction was not successful.";
-                //    if (order != null)
-                //        AddOrderNote(order, note);
-                //    return false;
-                //}
-                else // Request or transaction not successful
-                {
-                    // Logg error or failure
-                    var note = new StringBuilder();
-                    note.AppendLine("PayEx: Complete failed");
-                    note.AppendLine("ErrorCode: " + result.ErrorCode);
-                    note.AppendLine("Description: " + result.Description);
-                    note.AppendLine("ThirdPartyError: " + result.ThirdPartyError);
-                    note.AppendLine("ParamName: " + result.ParamName);
-                    note.AppendLine("TransactionStatus: " + result.TransactionStatus);
-                    if (result.TransactionErrorCode != null)
-                    {
-                        note.AppendLine("TransactionErrorCode: " + result.TransactionErrorCode);
-                        note.AppendLine("TransactionErrorDescription: " + result.TransactionErrorDescription);
-                        note.AppendLine("TransactionThirdPartyError: " + result.TransactionThirdPartyError);
-                    }
-                    note.AppendLine("PaymentMethod: " + result.PaymentMethod);
-                    note.AppendLine(string.Format("Amount: {0:n2}", result.Amount));
-                    note.AppendLine("AlreadyCompleted: " + result.AlreadyCompleted);
-                    note.AppendLine("OrderID: " + result.OrderID);
-                    if (!result.IsRequestSuccessful)
-                        _logger.Error(note.ToString());
-                    if (order != null)
-                        AddOrderNote(order, note.ToString());
-                }
+                // This should very rarely happen. But in case the transaction callback failed, we can check it here again.
+                result = processor.Complete(orderRef);
             }
-            return false;
+
+            if (order != null && result.IsTransactionSuccessful)
+            {
+                // Add order note
+                var note = new StringBuilder();
+                note.AppendLine($"PayEx: Complete SUCCEEDED {(isCallback ? "synchronously" : "via callback")}");
+                note.AppendLine("PaymentMethod: " + result.PaymentMethod);
+                note.AppendLine(string.Format("Amount: {0:n2}", result.Amount));
+                note.AppendLine("TransactionNumber: " + result.TransactionNumber);
+                note.AppendLine("TransactionStatus: " + result.TransactionStatus);
+                order.OrderNotes.Add(new OrderNote
+                {
+                    Note = note.ToString(),
+                    DisplayToCustomer = false,
+                    CreatedOnUtc = DateTime.UtcNow,
+                });
+                _orderService.UpdateOrder(order);
+
+                // Validate order total
+                if (_payExPaymentSettings.ValidateOrderTotal && !Math.Round(result.Amount.Value, 2).Equals(Math.Round(order.OrderTotal, 2)))
+                {
+                    string errorStr = string.Format("PayEx Complete. Returned order total {0:n2} doesn't equal order total {1:n2}", result.Amount, order.OrderTotal);
+                    _logger.Error(errorStr, customer: order.Customer);
+
+                    return order;
+                }
+
+                UpdateAgreement(result, order);
+                
+                UpdateOrderPaymentStatus(result, order);
+
+                return order;
+            }
+            //else // Transaction not successful
+            //{
+            //    string note = "Transaction was not successful.";
+            //    if (order != null)
+            //        AddOrderNote(order, note);
+            //    return false;
+            //}
+            else // Request or transaction not successful
+            {
+                // Logg error or failure
+                var note = new StringBuilder();
+                note.AppendLine("PayEx: Complete FAILED");
+                note.AppendLine("ErrorCode: " + result.ErrorCode);
+                note.AppendLine("Description: " + result.Description);
+                note.AppendLine("ThirdPartyError: " + result.ThirdPartyError);
+                note.AppendLine("ParamName: " + result.ParamName);
+                note.AppendLine("TransactionStatus: " + result.TransactionStatus);
+                if (result.TransactionErrorCode != null)
+                {
+                    note.AppendLine("TransactionErrorCode: " + result.TransactionErrorCode);
+                    note.AppendLine("TransactionErrorDescription: " + result.TransactionErrorDescription);
+                    note.AppendLine("TransactionThirdPartyError: " + result.TransactionThirdPartyError);
+                }
+                note.AppendLine("PaymentMethod: " + result.PaymentMethod);
+                note.AppendLine(string.Format("Amount: {0:n2}", result.Amount));
+                note.AppendLine("AlreadyCompleted: " + result.AlreadyCompleted);
+                note.AppendLine("OrderID: " + result.OrderID);
+                if (!result.IsRequestSuccessful)
+                    _logger.Error(note.ToString());
+                if (order != null)
+                    AddOrderNote(order, note.ToString());
+            }
+            return null;
+        }
+
+        private void UpdateAgreement(CompleteResult result, Order order)
+        {
+            // Check if the transaction is based on an agreement
+            if (string.IsNullOrEmpty(result.AgreementRef))
+                return;
+
+            order.SubscriptionTransactionId = result.AgreementRef;
+            // Check if the agreement already exists
+            PayExAgreement agreement = _payExAgreementService.GetByAgreementRef(result.AgreementRef);
+            if (agreement == null)
+            {
+                // Save the new agreement
+                agreement = new PayExAgreement()
+                {
+                    AgreementRef = result.AgreementRef,
+                    CustomerId = order.Customer.Id,
+                    MaxAmount = _payExPaymentSettings.AgreementMaxAmount,
+                    Name = result.MaskedNumber ?? "Sparat kort", // TODO
+                    PaymentMethod = result.PaymentMethod,
+                    PaymentMethodExpireDate = result.PaymentMethodExpireDate,
+                    PaymentMethodSystemName = order.PaymentMethodSystemName,
+                    NumberOfUsages = 1,
+                    LastUsedDate = DateTime.UtcNow,
+                    CreatedDate = DateTime.UtcNow,
+                };
+                _payExAgreementService.InsertPayExAgreement(agreement);
+            }
+            else
+            {
+                // Log usage
+                agreement.NumberOfUsages++;
+                agreement.LastUsedDate = DateTime.UtcNow;
+                _payExAgreementService.UpdatePayExAgreement(agreement);
+            }
+        }
+
+        private void UpdateOrderPaymentStatus(BaseTransactionResult result, Order order)
+        {
+            switch (result.TransactionStatus.Value)
+            {
+                case Enumerations.TransactionStatusCode.Sale:
+                case Enumerations.TransactionStatusCode.Capture: // Capture should not happen here
+                    order.CaptureTransactionId = result.TransactionNumber;
+                    _orderService.UpdateOrder(order);
+                    // Mark order as paid
+                    if (result.TransactionStatus == Enumerations.TransactionStatusCode.Sale &&
+                        _orderProcessingService.CanMarkOrderAsPaid(order))
+                        _orderProcessingService.MarkOrderAsPaid(order);
+                    break;
+                case Enumerations.TransactionStatusCode.Authorize:
+                    order.AuthorizationTransactionId = result.TransactionNumber;
+                    _orderService.UpdateOrder(order);
+                    if (_orderProcessingService.CanMarkOrderAsAuthorized(order))
+                        _orderProcessingService.MarkAsAuthorized(order);
+                    break;
+                default:
+                    break;
+            }
         }
 
         [NonAction]
@@ -339,58 +359,44 @@ namespace Nop.Plugin.Payments.PayEx.Controllers
             return paymentInfo;
         }
 
-        public virtual ActionResult Complete(string orderRef)
+        public virtual async Task<ActionResult> Complete(string orderRef)
         {
-            int orderId;
-            if (DoComplete(orderRef, out orderId))
-                return RedirectToRoute("CheckoutCompleted", new { orderId = orderId });
-            else
-            {
-                PaymentFailedModel model = new PaymentFailedModel() { OrderId = orderId };
-                return View("~/Plugins/Payments.PayEx/Views/PaymentPayEx/PaymentFailed.cshtml", model);
-            }
+            var order = await DoComplete(orderRef, false);
+            if (order?.PaymentStatus == PaymentStatus.Paid
+                || order?.PaymentStatus == PaymentStatus.Authorized)
+                return RedirectToRoute("CheckoutCompleted", new { orderId = order.Id });
+
+            PaymentFailedModel model = new PaymentFailedModel { OrderId = order?.Id ?? 0 };
+            return View("~/Plugins/Payments.PayEx/Views/PaymentPayEx/PaymentFailed.cshtml", model);
         }
 
         [ValidateInput(false)]
         [HttpPost]
-        public virtual ActionResult TransactionCallback(FormCollection form)
+        public virtual async Task<ActionResult> TransactionCallback(FormCollection form)
         {
-            string statusCode = "FAILURE";
             //string transactionRef = form["transactionRef"];
             //string transactionNumber = form["transactionNumber"];
-            string orderRef = form["orderRef"];
-            if (!string.IsNullOrWhiteSpace(orderRef))
-            {
-                try
-                {
-                    int orderId;
-                    DoComplete(orderRef, out orderId);
-                    if (orderId > 0)
-                        statusCode = "OK";
-                }
-                catch (Exception)
-                {
-                    // FAILURE
-                }
-            }
-
-            return Content(statusCode);
+            return await TransactionCallback(form["orderRef"]);
         }
 
 #if DEBUG
         [HttpGet]
-        public virtual ActionResult TransactionCallbackGet(string orderRef)
+        public virtual async Task<ActionResult> TransactionCallbackGet(string orderRef)
         {
             // Used for debugging with GET.
-            string statusCode = "FAILURE";
+            return await TransactionCallback(orderRef);
+        }
+#endif
+
+        private async Task<ActionResult> TransactionCallback(string orderRef)
+        {
             if (!string.IsNullOrWhiteSpace(orderRef))
             {
                 try
                 {
-                    int orderId;
-                    DoComplete(orderRef, out orderId);
-                    if (orderId > 0)
-                        statusCode = "OK";
+                    var order = await DoComplete(orderRef, true);
+                    if (order != null)
+                        return Content("OK");
                 }
                 catch (Exception)
                 {
@@ -398,9 +404,8 @@ namespace Nop.Plugin.Payments.PayEx.Controllers
                 }
             }
 
-            return Content(statusCode);
+            return Content("FAILURE");
         }
-#endif
 
         public virtual ActionResult CancelOrder(FormCollection form)
         {

@@ -356,6 +356,8 @@ namespace Nop.Plugin.Payments.PayEx
                 View = PaymentView,
                 ClientLanguage = _workContext.WorkingLanguage?.LanguageCulture,
             };
+            BeforeInitialize(postProcessPaymentRequest, request);
+
             InitializeResult result = payex.Initialize(request);
 
             if (result.IsRequestSuccessful)
@@ -370,6 +372,14 @@ namespace Nop.Plugin.Payments.PayEx
             }
             else
                 throw new NopException(result.GetErrorDescription());
+        }
+
+        /// <summary>
+        /// Makes it possible for derived controllers to modify the initialize request before it is sent.
+        /// </summary>
+        protected virtual void BeforeInitialize(
+            PostProcessPaymentRequest postProcessPaymentRequest, InitializeRequest request)
+        {
         }
 
         /// <summary>

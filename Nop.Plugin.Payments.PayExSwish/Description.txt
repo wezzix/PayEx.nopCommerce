@@ -1,0 +1,8 @@
+﻿Group: Payment methods
+FriendlyName: Swish
+SystemName: Payments.PayExSwish
+Version: 1.00
+SupportedVersions: 3.90
+Author: Markus Kvist
+DisplayOrder: 11
+FileName: Nop.Plugin.Payments.PayExSwish.dll

@@ -2,6 +2,7 @@
 using System.Net;
 using System.ServiceModel;
 using System.Text;
+using System.Text.RegularExpressions;
 using SD.Payex2.Crypto;
 using SD.Payex2.Entities;
 using SD.Payex2.Services.PxAgreement;
@@ -133,9 +134,12 @@ namespace SD.Payex2
             var clientIdentifier = "USERAGENT=" + (request.UserAgent ?? string.Empty);
 
             var additionalValues = "RESPONSIVE=1";
+            if (!string.IsNullOrWhiteSpace(request.MobilePhoneNumber))
+                additionalValues += $"&MSISDN={Regex.Replace(request.MobilePhoneNumber, @"\D", "")}";
+
             var convPrice = request.Amount.ToPayEx();
             var priceArgList = string.Empty;
-            // string.Format("VISA={0},MC={0},AMEX={0},PX={0},FSPA={0},NB={0},SEB={0}", convPrice);
+            // string.Format("VISA={0},MC={0},AMEX={0},FSPA={0},NB={0},SHB={0},SEB={0},SWISH={0}", convPrice);
             long usedPrice = convPrice;
             var vat = request.VatPercent.ToPayEx(); // Percent * 100
             var externalID = string.Empty;

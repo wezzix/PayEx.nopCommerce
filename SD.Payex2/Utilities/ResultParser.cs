@@ -171,6 +171,9 @@ namespace SD.Payex2.Utilities
                     case "alreadycompleted":
                         result.AlreadyCompleted = string.Compare(value, "true", true) == 0;
                         break;
+                    case "pending":
+                        result.Pending = string.Compare(value, "true", true) == 0;
+                        break;
                 }
             }
 

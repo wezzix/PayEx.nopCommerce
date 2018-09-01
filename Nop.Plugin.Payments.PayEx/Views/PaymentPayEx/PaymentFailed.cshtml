@@ -25,15 +25,17 @@
                     @T("Checkout.OrderNumber"): @Model.OrderId
                 </p>
                 <p>
-                    <a href="@Url.RouteUrl("OrderDetails", new { orderID = @Model.OrderId })">@T("Checkout.PlacedOrderDetails")</a>
+                    <div class="select-button">
+                        <input type="submit" name="nextstep" value="@T("Checkout.PlacedOrderDetails")" id="nextstep" class="orderprocessedcontinuebutton" onclick="setLocation('@Url.RouteUrl("OrderDetails", new { orderID = @Model.OrderId })')" />
+                    </div>
                 </p>
                 }
             </div>
             <div class="clear">
             </div>
-            <div class="select-button">
+            @*<div class="select-button">
                 <input type="submit" name="nextstep" value="@T("Common.Continue")" id="nextstep" class="orderprocessedcontinuebutton" onclick="setLocation('@Url.RouteUrl("HomePage")')" />
-            </div>
+            </div>*@
         </div>
     </div>
 </div>
