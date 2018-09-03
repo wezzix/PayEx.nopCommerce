@@ -1,0 +1,11 @@
+﻿{
+  "Group": "Payment methods",
+  "FriendlyName": "Swish",
+  "SystemName": "Payments.PayExSwish",
+  "Version": "1.00",
+  "SupportedVersions": [ "4.00" ],
+  "Author": "Markus Kvist",
+  "DisplayOrder": 11,
+  "FileName": "Nop.Plugin.Payments.PayExSwish.dll",
+  "Description": "This plugin offers payment by Swish through PayEx"
+}

@@ -1,16 +1,19 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Web;
-using System.Web.Routing;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Primitives;
 using Nop.Core;
-using Nop.Core.Domain;
+using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Directory;
 using Nop.Core.Domain.Orders;
 using Nop.Core.Domain.Payments;
 using Nop.Core.Plugins;
 using Nop.Plugin.Payments.PayEx.Controllers;
 using Nop.Plugin.Payments.PayEx.Data;
+using Nop.Plugin.Payments.PayEx.Domain;
+using Nop.Plugin.Payments.PayEx.Services;
 using Nop.Services.Configuration;
 using Nop.Services.Directory;
 using Nop.Services.Localization;
@@ -28,60 +31,63 @@ namespace Nop.Plugin.Payments.PayEx
     /// </summary>
     public class PayExPaymentProcessor : BasePlugin, IPaymentMethod
     {
-        #region Fields
-
-        private const string PaymentViewCreditCard = "CREDITCARD";
-        private readonly PayExAgreementObjectContext _payExAgreementObjectContext;
-        private readonly PayExPaymentSettings _payExPaymentSettings;
-        private readonly ISettingService _settingService;
-        private readonly ICurrencyService _currencyService;
-        private readonly CurrencySettings _currencySettings;
-        private readonly IWebHelper _webHelper;
-        private readonly ICheckoutAttributeParser _checkoutAttributeParser;
-        private readonly ITaxService _taxService;
-        private readonly HttpContextBase _httpContext;
-        private readonly ILogger _logger;
-        private readonly IOrderService _orderService;
-        private readonly ILocalizationService _localizationService;
-        private readonly IStoreContext _storeContext;
-        private readonly IWorkContext _workContext;
-        public static string AgreementRefKey = "AgreementRef";
-
-        #endregion
-
         #region Constructor
 
         public PayExPaymentProcessor(
             PayExPaymentSettings payExPaymentSettings,
             PayExAgreementObjectContext payExAgreementObjectContext,
+            IPayExAgreementService payExAgreementService,
             ISettingService settingService,
             ICurrencyService currencyService,
             CurrencySettings currencySettings,
             IWebHelper webHelper,
             ICheckoutAttributeParser checkoutAttributeParser,
             ITaxService taxService,
-            HttpContextBase httpContext,
+            IHttpContextAccessor httpContextAccessor,
             ILogger logger,
             IOrderService orderService,
             ILocalizationService localizationService,
             IStoreContext storeContext,
             IWorkContext workContext)
         {
-            this._payExPaymentSettings = payExPaymentSettings;
-            this._payExAgreementObjectContext = payExAgreementObjectContext;
-            this._settingService = settingService;
-            this._currencyService = currencyService;
-            this._currencySettings = currencySettings;
-            this._webHelper = webHelper;
-            this._checkoutAttributeParser = checkoutAttributeParser;
-            this._taxService = taxService;
-            this._httpContext = httpContext;
-            this._logger = logger;
-            this._orderService = orderService;
-            this._localizationService = localizationService;
+            _payExPaymentSettings = payExPaymentSettings;
+            _payExAgreementObjectContext = payExAgreementObjectContext;
+            _settingService = settingService;
+            _currencyService = currencyService;
+            _currencySettings = currencySettings;
+            _webHelper = webHelper;
+            _checkoutAttributeParser = checkoutAttributeParser;
+            _taxService = taxService;
+            _httpContextAccessor = httpContextAccessor;
+            _logger = logger;
+            _orderService = orderService;
+            _localizationService = localizationService;
             _storeContext = storeContext;
             _workContext = workContext;
+            _payExAgreementService = payExAgreementService;
         }
+
+        #endregion
+
+        #region Fields
+
+        private const string PaymentViewCreditCard = "CREDITCARD";
+        private readonly PayExAgreementObjectContext _payExAgreementObjectContext;
+        private readonly PayExPaymentSettings _payExPaymentSettings;
+        private readonly IPayExAgreementService _payExAgreementService;
+        private readonly ISettingService _settingService;
+        private readonly ICurrencyService _currencyService;
+        private readonly CurrencySettings _currencySettings;
+        private readonly IWebHelper _webHelper;
+        private readonly ICheckoutAttributeParser _checkoutAttributeParser;
+        private readonly ITaxService _taxService;
+        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly ILogger _logger;
+        private readonly IOrderService _orderService;
+        private readonly ILocalizationService _localizationService;
+        private readonly IStoreContext _storeContext;
+        private readonly IWorkContext _workContext;
+        public static string AgreementRefKey = "AgreementRef";
 
         #endregion
 
@@ -99,8 +105,8 @@ namespace Nop.Plugin.Payments.PayEx
             if (_payExPaymentSettings.TransactionMode == TransactionMode.Authorize &&
                 (PaymentView == PaymentViewCreditCard || PaymentView == "PX"))
                 return PayexInterface.PurchaseOperation.Authorization;
-            else
-                return PayexInterface.PurchaseOperation.Sale;
+
+            return PayexInterface.PurchaseOperation.Sale;
         }
 
         // Test account specifically created for testing the Payex for nopCommerce plugin. Any other use is not allowed.
@@ -115,15 +121,16 @@ namespace Nop.Plugin.Payments.PayEx
             else
                 account = new PayexAccount(TestAccount, TestEncryptionKey);
             PayexInterface payex = new PayexInterface(account);
-            payex.UseTestEnvironment = _payExPaymentSettings.UseTestEnvironment || _payExPaymentSettings.AccountNumber <= 0;
+            payex.UseTestEnvironment =
+                _payExPaymentSettings.UseTestEnvironment || _payExPaymentSettings.AccountNumber <= 0;
             return payex;
         }
 
-        internal CompleteResult Complete(string orderRef)
+        internal Task<CompleteResult> Complete(string orderRef)
         {
             PayexInterface payex = GetPayexInterface();
 
-            CompleteResult result = payex.Complete(orderRef);
+            var result = payex.Complete(orderRef);
 
             return result;
         }
@@ -136,7 +143,10 @@ namespace Nop.Plugin.Payments.PayEx
             int itemIndex = 1;
             foreach (var item in cartItems)
             {
-                AddOrderLine(payex, orderRef, item.Product.Sku ?? string.Format("{0}", itemIndex++), item.Product.Name, item.Quantity, item.PriceInclTax);
+                AddOrderLine(
+                        payex, orderRef, item.Product.Sku ?? string.Format("{0}", itemIndex++), item.Product.Name,
+                        item.Quantity, item.PriceInclTax)
+                    .GetAwaiter().GetResult();
                 cartTotal += item.PriceInclTax;
             }
 
@@ -148,7 +158,8 @@ namespace Nop.Plugin.Payments.PayEx
                 CheckoutAttribute ca = val.CheckoutAttribute;
                 if (caPriceInclTax > decimal.Zero && ca != null) //if it has a price
                 {
-                    AddOrderLine(payex, orderRef, string.Format("{0}", itemIndex++), ca.Name, 1, caPriceInclTax);
+                    AddOrderLine(payex, orderRef, string.Format("{0}", itemIndex++), ca.Name, 1, caPriceInclTax)
+                        .GetAwaiter().GetResult();
                     cartTotal += caPriceInclTax;
                 }
             }
@@ -159,7 +170,10 @@ namespace Nop.Plugin.Payments.PayEx
             var orderShippingInclTax = order.OrderShippingInclTax;
             if (orderShippingInclTax > decimal.Zero)
             {
-                AddOrderLine(payex, orderRef, string.Format("{0}", itemIndex++), _localizationService.GetResource("Order.Shipping"), 1, orderShippingInclTax);
+                AddOrderLine(
+                        payex, orderRef, string.Format("{0}", itemIndex++),
+                        _localizationService.GetResource("Order.Shipping"), 1, orderShippingInclTax)
+                    .GetAwaiter().GetResult();
                 cartTotal += orderShippingInclTax;
             }
 
@@ -167,7 +181,11 @@ namespace Nop.Plugin.Payments.PayEx
             var paymentMethodAdditionalFeeInclTax = order.PaymentMethodAdditionalFeeInclTax;
             if (paymentMethodAdditionalFeeInclTax > decimal.Zero)
             {
-                AddOrderLine(payex, orderRef, string.Format("{0}", itemIndex++), _localizationService.GetResource("Order.PaymentMethodAdditionalFee"), 1, paymentMethodAdditionalFeeInclTax);
+                AddOrderLine(
+                        payex, orderRef, string.Format("{0}", itemIndex++),
+                        _localizationService.GetResource("Order.PaymentMethodAdditionalFee"), 1,
+                        paymentMethodAdditionalFeeInclTax)
+                    .GetAwaiter().GetResult();
                 cartTotal += paymentMethodAdditionalFeeInclTax;
             }
 
@@ -178,22 +196,29 @@ namespace Nop.Plugin.Payments.PayEx
                  */
                 decimal discountTotal = cartTotal - order.OrderTotal;
                 //gift card or rewared point amount applied to cart in nopCommerce
-                AddOrderLine(payex, orderRef, string.Format("{0}", itemIndex++), _localizationService.GetResource("Admin.Orders.Products.Discount"), 1, -discountTotal);
+                AddOrderLine(
+                        payex, orderRef, string.Format("{0}", itemIndex++),
+                        _localizationService.GetResource("Admin.Orders.Products.Discount"), 1, -discountTotal)
+                    .GetAwaiter().GetResult();
             }
         }
 
-        private static bool AddOrderLine(PayexInterface payex, string orderRef, string itemNumber, string itemDescription, int quantity, decimal amount)
+        private async Task<bool> AddOrderLine(
+            PayexInterface payex, string orderRef, string itemNumber, string itemDescription, int quantity,
+            decimal amount)
         {
             if (string.IsNullOrEmpty(itemNumber))
                 return true; // Skip
-            BaseResult lineResult = payex.AddSingleOrderLine(new AddSingleOrderLineRequest()
-            {
-                OrderRef = orderRef,
-                ItemNumber = itemNumber,
-                ItemDescription1 = itemDescription,
-                Quantity = quantity,
-                Amount = amount,
-            });
+
+            BaseResult lineResult = await payex.AddSingleOrderLine(
+                new AddSingleOrderLineRequest
+                {
+                    OrderRef = orderRef,
+                    ItemNumber = itemNumber,
+                    ItemDescription1 = itemDescription,
+                    Quantity = quantity,
+                    Amount = amount,
+                });
             return lineResult.IsRequestSuccessful;
         }
 
@@ -211,25 +236,24 @@ namespace Nop.Plugin.Payments.PayEx
         /// </summary>
         /// <param name="cart">Shopping cart</param>
         /// <returns>Additional handling fee</returns>
-        public decimal GetAdditionalHandlingFee(System.Collections.Generic.IList<ShoppingCartItem> cart)
+        public decimal GetAdditionalHandlingFee(IList<ShoppingCartItem> cart)
         {
             return _payExPaymentSettings.AdditionalFee;
         }
 
         private string TryGetAgreementRef(Dictionary<string, object> customValues)
         {
-            object agreementRefObject;
-            if (!customValues.TryGetValue(AgreementRefKey, out agreementRefObject) || agreementRefObject == null)
+            if (!customValues.TryGetValue(AgreementRefKey, out object agreementRefObject) || agreementRefObject == null)
                 return null;
 
             return agreementRefObject.ToString();
         }
 
         /// <summary>
-        /// This method is always invoked right before a customer places an order. 
-        /// Use it when you need to process a payment before an order is stored into database. 
-        /// For example, capture or authorize credit card. Usually this method is used when a customer 
-        /// is not redirected to third-party site for completing a payment and all payments 
+        /// This method is always invoked right before a customer places an order.
+        /// Use it when you need to process a payment before an order is stored into database.
+        /// For example, capture or authorize credit card. Usually this method is used when a customer
+        /// is not redirected to third-party site for completing a payment and all payments
         /// are handled on your site (for example, PayPal Direct).
         /// </summary>
         /// <param name="processPaymentRequest">Payment info required for an order processing</param>
@@ -239,19 +263,19 @@ namespace Nop.Plugin.Payments.PayEx
             var result = new ProcessPaymentResult();
             result.NewPaymentStatus = PaymentStatus.Pending;
 
-#if AGREEMENT
             // Use an existing agreement to make the payment, if the customer chose this option.
-            object agreementRefObject;
-            if (!processPaymentRequest.CustomValues.TryGetValue(AgreementRefKey, out agreementRefObject) || agreementRefObject == null)
+            if (!processPaymentRequest.CustomValues.TryGetValue(AgreementRefKey, out object agreementRefObject)
+                || agreementRefObject == null)
                 return result;
 
             var agreementRef = TryGetAgreementRef(processPaymentRequest.CustomValues);
             if (!string.IsNullOrEmpty(agreementRef)
                 && agreementRef != "new")
             {
-                string currencyCode = _currencyService.GetCurrencyById(_currencySettings.PrimaryStoreCurrencyId).CurrencyCode;
+                string currencyCode = _currencyService.GetCurrencyById(_currencySettings.PrimaryStoreCurrencyId)
+                    .CurrencyCode;
                 string description = string.Format("{0} - Order", _storeContext.CurrentStore.Name);
-                AutoPayRequest request = new AutoPayRequest()
+                AutoPayRequest request = new AutoPayRequest
                 {
                     PurchaseOperation = GetPurchaseOperation(),
                     Amount = processPaymentRequest.OrderTotal,
@@ -262,7 +286,7 @@ namespace Nop.Plugin.Payments.PayEx
                     AgreementRef = agreementRef,
                 };
                 PayexInterface payex = GetPayexInterface();
-                AutoPayResult autopayResult = payex.AutoPay(request);
+                AutoPayResult autopayResult = payex.AutoPay(request).GetAwaiter().GetResult();
 
                 // Check result and set new payment status
                 if (autopayResult.IsTransactionSuccessful)
@@ -282,10 +306,12 @@ namespace Nop.Plugin.Payments.PayEx
                     }
                 }
                 else
-                    _logger.Error(string.Format("PayEx: AutoPay failed for order {0}.", processPaymentRequest.OrderGuid),
+                {
+                    _logger.Error(
+                        string.Format("PayEx: AutoPay failed for order {0}.", processPaymentRequest.OrderGuid),
                         new NopException(autopayResult.GetErrorDescription()));
+                }
             }
-#endif
 
             return result;
         }
@@ -302,11 +328,12 @@ namespace Nop.Plugin.Payments.PayEx
             if (order.PaymentStatus == PaymentStatus.Paid || order.PaymentStatus == PaymentStatus.Authorized)
                 return;
 
-            string currencyCode = _currencyService.GetCurrencyById(_currencySettings.PrimaryStoreCurrencyId).CurrencyCode;
+            string currencyCode =
+                _currencyService.GetCurrencyById(_currencySettings.PrimaryStoreCurrencyId).CurrencyCode;
             string description = string.Format("{0} - Order", _storeContext.CurrentStore.Name);
             string userAgent;
-            if (_httpContext.Request != null)
-                userAgent = _httpContext.Request.UserAgent;
+            if (_httpContextAccessor.HttpContext.Request != null)
+                userAgent = _httpContextAccessor.HttpContext.Request.Headers["User-Agent"].ToString();
             else
                 userAgent = null;
 
@@ -316,30 +343,32 @@ namespace Nop.Plugin.Payments.PayEx
             PayexInterface payex = GetPayexInterface();
 
             string agreementRef = null;
-#if AGREEMENT
             // If the customer wishes to save his payment details, we make an agreement. 
             // This should be saved later in the complete operation, if it occurs.
             agreementRef = TryGetAgreementRef(order.DeserializeCustomValues());
             if (agreementRef == "new")
             {
-                CreateAgreementRequest agreementRequest = new CreateAgreementRequest()
+                CreateAgreementRequest agreementRequest = new CreateAgreementRequest
                 {
                     PurchaseOperation = GetPurchaseOperation(),
                     MerchantRef = order.OrderGuid.ToString(),
                     MaxAmount = _payExPaymentSettings.AgreementMaxAmount,
                     Description = description,
                 };
-                CreateAgreementResult agreementResult = payex.CreateAgreement(agreementRequest);
+                CreateAgreementResult agreementResult =
+                    payex.CreateAgreement(agreementRequest).GetAwaiter().GetResult();
                 if (agreementResult.IsRequestSuccessful)
                     agreementRef = agreementResult.AgreementRef;
                 else
-                    _logger.Error(string.Format("PayEx: CreateAgreement (for AutoPay) failed for order {0}.", order.Id),
+                {
+                    _logger.Error(
+                        string.Format("PayEx: CreateAgreement (for AutoPay) failed for order {0}.", order.Id),
                         new NopException(agreementResult.GetErrorDescription()), order.Customer);
+                }
             }
-#endif
-            
+
             // Initialize the purchase and get the redirect URL
-            InitializeRequest request = new InitializeRequest()
+            InitializeRequest request = new InitializeRequest
             {
                 PurchaseOperation = GetPurchaseOperation(),
                 Amount = order.OrderTotal,
@@ -358,7 +387,7 @@ namespace Nop.Plugin.Payments.PayEx
             };
             BeforeInitialize(postProcessPaymentRequest, request);
 
-            InitializeResult result = payex.Initialize(request);
+            InitializeResult result = payex.Initialize(request).GetAwaiter().GetResult();
 
             if (result.IsRequestSuccessful)
             {
@@ -368,7 +397,7 @@ namespace Nop.Plugin.Payments.PayEx
                 if (_payExPaymentSettings.PassProductNamesAndTotals)
                     AddOrderLines(payex, result.OrderRef, order);
                 // Redirect to PayEx
-                _httpContext.Response.Redirect(result.RedirectUrl);
+                _httpContextAccessor.HttpContext.Response.Redirect(result.RedirectUrl);
             }
             else
                 throw new NopException(result.GetErrorDescription());
@@ -383,7 +412,8 @@ namespace Nop.Plugin.Payments.PayEx
         }
 
         /// <summary>
-        /// Some payment gateways allow you to authorize payments before they're captured. It allows store owners to review order details before the payment is actually done.
+        /// Some payment gateways allow you to authorize payments before they're captured. It allows store owners to review order
+        /// details before the payment is actually done.
         /// </summary>
         /// <param name="capturePaymentRequest">Capture payment request</param>
         /// <returns>Capture payment result</returns>
@@ -392,13 +422,13 @@ namespace Nop.Plugin.Payments.PayEx
             var result = new CapturePaymentResult();
 
             Order order = capturePaymentRequest.Order;
-            int transactionNumber;
-            if (int.TryParse(order.AuthorizationTransactionId, out transactionNumber))
+            if (int.TryParse(order.AuthorizationTransactionId, out int transactionNumber))
             {
                 decimal amount = Math.Round(order.OrderTotal, 2);
 
                 PayexInterface payex = GetPayexInterface();
-                CaptureResult captureResult = payex.Capture(transactionNumber, amount, order.OrderGuid.ToString());
+                CaptureResult captureResult = payex.Capture(transactionNumber, amount, order.OrderGuid.ToString())
+                    .GetAwaiter().GetResult();
 
                 result.CaptureTransactionResult = captureResult.ErrorCode;
                 result.CaptureTransactionId = captureResult.TransactionNumber;
@@ -408,30 +438,36 @@ namespace Nop.Plugin.Payments.PayEx
                     result.NewPaymentStatus = PaymentStatus.Paid;
                     // Add order note
                     var note = new StringBuilder();
-                    note.AppendLine("PayEx: Capture succeded");
+                    note.AppendLine("PayEx: Capture succeeded");
                     note.AppendLine(string.Format("Amount: {0:n2}", amount));
                     note.AppendLine("TransactionNumber: " + captureResult.TransactionNumber);
                     note.AppendLine("TransactionStatus: " + captureResult.TransactionStatus);
-                    order.OrderNotes.Add(new OrderNote()
-                    {
-                        Note = note.ToString(),
-                        DisplayToCustomer = false,
-                        CreatedOnUtc = DateTime.UtcNow
-                    });
+                    order.OrderNotes.Add(
+                        new OrderNote
+                        {
+                            Note = note.ToString(),
+                            DisplayToCustomer = false,
+                            CreatedOnUtc = DateTime.UtcNow
+                        });
                     _orderService.UpdateOrder(order);
                 }
                 else
                     result.AddError(captureResult.GetErrorDescription());
             }
             else
-                result.Errors.Add(string.Format("The order did not contain a valid TransactionNumber in the AuthorizationTransactionId field ('{0}').",
-                    order.AuthorizationTransactionId));
+            {
+                result.Errors.Add(
+                    string.Format(
+                        "The order did not contain a valid TransactionNumber in the AuthorizationTransactionId field ('{0}').",
+                        order.AuthorizationTransactionId));
+            }
 
             return result;
         }
 
         /// <summary>
-        /// This method allows you void an authorized but not captured payment. In this case a Void button will be visible on the order details page in admin area. Note that an order should be authorized and SupportVoid property should return true.
+        /// This method allows you void an authorized but not captured payment. In this case a Void button will be visible on the
+        /// order details page in admin area. Note that an order should be authorized and SupportVoid property should return true.
         /// </summary>
         /// <param name="voidPaymentRequest">Request</param>
         /// <returns>Result</returns>
@@ -440,11 +476,10 @@ namespace Nop.Plugin.Payments.PayEx
             var result = new VoidPaymentResult();
 
             Order order = voidPaymentRequest.Order;
-            int transactionNumber;
-            if (int.TryParse(order.AuthorizationTransactionId, out transactionNumber))
+            if (int.TryParse(order.AuthorizationTransactionId, out int transactionNumber))
             {
                 PayexInterface payex = GetPayexInterface();
-                CancelResult cancelResult = payex.Cancel(transactionNumber);
+                CancelResult cancelResult = payex.Cancel(transactionNumber).GetAwaiter().GetResult();
 
                 if (cancelResult.IsRequestSuccessful)
                     result.NewPaymentStatus = PaymentStatus.Voided;
@@ -452,14 +487,19 @@ namespace Nop.Plugin.Payments.PayEx
                     result.AddError(cancelResult.GetErrorDescription());
             }
             else
-                result.AddError(string.Format("The order did not contain a valid TransactionNumber in the AuthorizationTransactionId field ('{0}').",
-                    order.AuthorizationTransactionId));
+            {
+                result.AddError(
+                    string.Format(
+                        "The order did not contain a valid TransactionNumber in the AuthorizationTransactionId field ('{0}').",
+                        order.AuthorizationTransactionId));
+            }
 
             return result;
         }
 
         /// <summary>
-        /// This method allows you make a refund. In this case a Refund button will be visible on the order details page in admin area. Note that an order should be paid, and SupportRefund or SupportPartiallyRefund property should return true.
+        /// This method allows you make a refund. In this case a Refund button will be visible on the order details page in admin
+        /// area. Note that an order should be paid, and SupportRefund or SupportPartiallyRefund property should return true.
         /// </summary>
         /// <param name="refundPaymentRequest">Request</param>
         /// <returns>Result</returns>
@@ -468,32 +508,34 @@ namespace Nop.Plugin.Payments.PayEx
             var result = new RefundPaymentResult();
 
             Order order = refundPaymentRequest.Order;
-            int transactionNumber;
-            if (int.TryParse(order.CaptureTransactionId, out transactionNumber))
+            if (int.TryParse(order.CaptureTransactionId, out int transactionNumber))
             {
                 decimal amount = Math.Round(refundPaymentRequest.AmountToRefund, 2);
 
                 PayexInterface payex = GetPayexInterface();
-                CreditResult creditResult = payex.Credit(transactionNumber, amount, order.OrderGuid.ToString());
+                CreditResult creditResult = payex.Credit(transactionNumber, amount, order.OrderGuid.ToString())
+                    .GetAwaiter().GetResult();
 
                 if (creditResult.IsRequestSuccessful)
                 {
                     // NOTE: We should save the transaction id for the refund, but no field is available in order.
                     // Add order note
                     var note = new StringBuilder();
-                    note.AppendLine("PayEx: Credit succeded");
+                    note.AppendLine("PayEx: Credit succeeded");
                     note.AppendLine(string.Format("Credited amount: {0:n2}", amount));
                     note.AppendLine("TransactionNumber: " + creditResult.TransactionNumber);
                     note.AppendLine("TransactionStatus: " + creditResult.TransactionStatus);
-                    order.OrderNotes.Add(new OrderNote()
-                    {
-                        Note = note.ToString(),
-                        DisplayToCustomer = false,
-                        CreatedOnUtc = DateTime.UtcNow
-                    });
+                    order.OrderNotes.Add(
+                        new OrderNote
+                        {
+                            Note = note.ToString(),
+                            DisplayToCustomer = false,
+                            CreatedOnUtc = DateTime.UtcNow
+                        });
                     _orderService.UpdateOrder(order);
                     // Set new payment status
-                    if (refundPaymentRequest.IsPartialRefund && refundPaymentRequest.AmountToRefund + order.RefundedAmount < order.OrderTotal)
+                    if (refundPaymentRequest.IsPartialRefund
+                        && refundPaymentRequest.AmountToRefund + order.RefundedAmount < order.OrderTotal)
                         result.NewPaymentStatus = PaymentStatus.PartiallyRefunded;
                     else
                         result.NewPaymentStatus = PaymentStatus.Refunded;
@@ -502,8 +544,12 @@ namespace Nop.Plugin.Payments.PayEx
                     result.AddError(creditResult.GetErrorDescription());
             }
             else
-                result.AddError(string.Format("The order did not contain a valid TransactionNumber in the AuthorizationTransactionId field ('{0}').",
-                    order.AuthorizationTransactionId));
+            {
+                result.AddError(
+                    string.Format(
+                        "The order did not contain a valid TransactionNumber in the AuthorizationTransactionId field ('{0}').",
+                        order.AuthorizationTransactionId));
+            }
 
             return result;
         }
@@ -533,14 +579,15 @@ namespace Nop.Plugin.Payments.PayEx
         }
 
         /// <summary>
-        /// Gets a value indicating whether customers can complete a payment after order is placed but not completed (for redirection payment methods)
+        /// Gets a value indicating whether customers can complete a payment after order is placed but not completed (for
+        /// redirection payment methods)
         /// </summary>
         /// <param name="order">Order</param>
         /// <returns>Result</returns>
         public bool CanRePostProcessPayment(Order order)
         {
             if (order == null)
-                throw new ArgumentNullException("order");
+                throw new ArgumentNullException(nameof(order));
 
             //PayEx uses the redirection payment method
             //It also validates whether order is also paid (after redirection) so customers will not be able to pay twice
@@ -557,35 +604,51 @@ namespace Nop.Plugin.Payments.PayEx
         }
 
         /// <summary>
-        /// Gets a route for provider configuration
+        /// Validate payment form
         /// </summary>
-        /// <param name="actionName">Action name</param>
-        /// <param name="controllerName">Controller name</param>
-        /// <param name="routeValues">Route values</param>
-        public virtual void GetConfigurationRoute(out string actionName, out string controllerName, out RouteValueDictionary routeValues)
+        /// <param name="form">The parsed form values</param>
+        /// <returns>List of validating errors</returns>
+        public virtual IList<string> ValidatePaymentForm(IFormCollection form) => new List<string>();
+
+        /// <summary>
+        /// Get payment information
+        /// </summary>
+        /// <param name="form">The parsed form values</param>
+        /// <returns>Payment info holder</returns>
+        public virtual ProcessPaymentRequest GetPaymentInfo(IFormCollection form)
         {
-            actionName = "Configure";
-            controllerName = "PaymentPayEx";
-            routeValues = new RouteValueDictionary() { { "Namespaces", "Nop.Plugin.Payments.PayEx.Controllers" }, { "area", null } };
+            var paymentInfo = new ProcessPaymentRequest();
+            // Process info from the payment form
+            if (!_workContext.CurrentCustomer.IsGuest() && _payExPaymentSettings.AllowCreateAgreement)
+            {
+                int.TryParse(form["payexagreement"], out int agreementId);
+                bool createAgreement = !StringValues.IsNullOrEmpty(form["CreateAgreement"])
+                    && string.Compare(form["CreateAgreement"][0], "true", StringComparison.InvariantCultureIgnoreCase) == 0;
+                // There are no dedicated fields we can use, so reuse PurchaseOrderNumber for agreement info.
+                if (agreementId > 0)
+                {
+                    PayExAgreement agreement = _payExAgreementService.GetById(agreementId);
+                    if (agreement != null && agreement.CustomerId == _workContext.CurrentCustomer.Id)
+                        paymentInfo.CustomValues.Add(AgreementRefKey, agreement.AgreementRef);
+                }
+                else if (createAgreement)
+                    paymentInfo.CustomValues.Add(AgreementRefKey, "new");
+            }
+
+            return paymentInfo;
         }
 
         /// <summary>
-        /// Gets a route for payment info
+        /// Gets a configuration page URL
         /// </summary>
-        /// <param name="actionName">Action name</param>
-        /// <param name="controllerName">Controller name</param>
-        /// <param name="routeValues">Route values</param>
-        public virtual void GetPaymentInfoRoute(out string actionName, out string controllerName, out RouteValueDictionary routeValues)
-        {
-            actionName = "PaymentInfo";
-            controllerName = "PaymentPayEx";
-            routeValues = new RouteValueDictionary() { { "Namespaces", "Nop.Plugin.Payments.PayEx.Controllers" }, { "area", null } };
-        }
+        public override string GetConfigurationPageUrl() =>
+            $"{_webHelper.GetStoreLocation()}Admin/PaymentPayEx/Configure";
 
-        public Type GetControllerType()
-        {
-            return typeof(PaymentPayExController);
-        }
+        /// <summary>
+        /// Gets a view component for displaying plugin in public store ("payment info" checkout step)
+        /// </summary>
+        public virtual void GetPublicViewComponent(out string viewComponentName) =>
+            viewComponentName = "PaymentPayEx";
 
         #endregion
 
@@ -596,57 +659,86 @@ namespace Nop.Plugin.Payments.PayEx
             // Do not overwrite existing settings.
             if (string.IsNullOrEmpty(_payExPaymentSettings.EncryptionKey))
             {
-                var settings = new PayExPaymentSettings()
+                var settings = new PayExPaymentSettings
                 {
                     UseTestEnvironment = true,
                     AccountNumber = 0,
                     //EncryptionKey = "your encryption key",
                     TransactionMode = TransactionMode.AuthorizeAndCapture,
-#if AGREEMENT
                     AgreementMaxAmount = 20000M,
-#endif
                 };
                 _settingService.SaveSetting(settings);
             }
 
             this.AddOrUpdatePluginLocaleResource("Plugins.FriendlyName.Payments.PayEx", "Debit/Credit card");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.Fields.UseTestEnvironment", "Use test environment");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.Fields.UseTestEnvironment.Hint", "Uses the test service instead of the production service. Don't forget to update your account number and encryption key.");
+            this.AddOrUpdatePluginLocaleResource(
+                "Plugins.Payments.PayEx.Fields.UseTestEnvironment", "Use test environment");
+            this.AddOrUpdatePluginLocaleResource(
+                "Plugins.Payments.PayEx.Fields.UseTestEnvironment.Hint",
+                "Uses the test service instead of the production service. Don't forget to update your account number and encryption key.");
             this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.Fields.AdditionalFee", "Additional fee");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.Fields.AdditionalFee.Hint", "Enter an additional fee to charge your customers when using this payment method.");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.Fields.PassProductNamesAndTotals", "Pass product names and totals");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.Fields.PassProductNamesAndTotals.Hint", "Check if product names and order totals should be passed to PayEx, instead of just order total.");
+            this.AddOrUpdatePluginLocaleResource(
+                "Plugins.Payments.PayEx.Fields.AdditionalFee.Hint",
+                "Enter an additional fee to charge your customers when using this payment method.");
+            this.AddOrUpdatePluginLocaleResource(
+                "Plugins.Payments.PayEx.Fields.PassProductNamesAndTotals", "Pass product names and totals");
+            this.AddOrUpdatePluginLocaleResource(
+                "Plugins.Payments.PayEx.Fields.PassProductNamesAndTotals.Hint",
+                "Check if product names and order totals should be passed to PayEx, instead of just order total.");
             this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.Fields.AccountNumber", "Account number");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.Fields.AccountNumber.Hint", "Specify your account number with PayEx.");
+            this.AddOrUpdatePluginLocaleResource(
+                "Plugins.Payments.PayEx.Fields.AccountNumber.Hint", "Specify your account number with PayEx.");
             this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.Fields.EncryptionKey", "Encryption key");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.Fields.EncryptionKey.Hint", "Specify the encryption key for this account.");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.Fields.TransactionModeValues", "Transaction mode credit card");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.Fields.TransactionModeValues.Hint", "When using Authorize, you will need to perform Capture manually to complete the transaction. When using Authorize and Capture, the sale will be completed instantly. Authorize is only possible with card payments.");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.Fields.ValidateOrderTotal", "Validate order total");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.Fields.ValidateOrderTotal.Hint", "Check if we should validate our order total with the actual amount received from PayEx upon completing the transaction.");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.CurrencyNotes", "If you're using this gateway ensure that your primary store currency is supported by PayEx.");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.TransactionCallbackNotes", "It is required by PayEx that you use Transaction Callback to ensure Direct Debit payment info is received, and it's recommended for Credit Card payments. Enter the following URL for Transaction Callback in PayEx Merchant Admin:");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.RedirectionTip", "You will be redirected to the PayEx site to complete the payment, once you click Confirm.");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.PaymentFailedPageTitle", "Your payment could not be processed");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.PaymentFailedInfo", "You may try to pay the order again by going to order details. If you wish to use another payment method you may place the order again by clicking order details. Please do not hesitate to contact us if you need any help.");
+            this.AddOrUpdatePluginLocaleResource(
+                "Plugins.Payments.PayEx.Fields.EncryptionKey.Hint", "Specify the encryption key for this account.");
+            this.AddOrUpdatePluginLocaleResource(
+                "Plugins.Payments.PayEx.Fields.TransactionModeValues", "Transaction mode credit card");
+            this.AddOrUpdatePluginLocaleResource(
+                "Plugins.Payments.PayEx.Fields.TransactionModeValues.Hint",
+                "When using Authorize, you will need to perform Capture manually to complete the transaction. When using Authorize and Capture, the sale will be completed instantly. Authorize is only possible with card payments.");
+            this.AddOrUpdatePluginLocaleResource(
+                "Plugins.Payments.PayEx.Fields.ValidateOrderTotal", "Validate order total");
+            this.AddOrUpdatePluginLocaleResource(
+                "Plugins.Payments.PayEx.Fields.ValidateOrderTotal.Hint",
+                "Check if we should validate our order total with the actual amount received from PayEx upon completing the transaction.");
+            this.AddOrUpdatePluginLocaleResource(
+                "Plugins.Payments.PayEx.CurrencyNotes",
+                "If you're using this gateway ensure that your primary store currency is supported by PayEx.");
+            this.AddOrUpdatePluginLocaleResource(
+                "Plugins.Payments.PayEx.TransactionCallbackNotes",
+                "It is required by PayEx that you use Transaction Callback to ensure Direct Debit payment info is received, and it's recommended for Credit Card payments. Enter the following URL for Transaction Callback in PayEx Merchant Admin:");
+            this.AddOrUpdatePluginLocaleResource(
+                "Plugins.Payments.PayEx.RedirectionTip",
+                "You will be redirected to the PayEx site to complete the payment, once you click Confirm.");
+            this.AddOrUpdatePluginLocaleResource(
+                "Plugins.Payments.PayEx.PaymentFailedPageTitle", "Your payment could not be processed");
+            this.AddOrUpdatePluginLocaleResource(
+                "Plugins.Payments.PayEx.PaymentFailedInfo",
+                "You may try to pay the order again by going to order details. If you wish to use another payment method you may place the order again by clicking order details. Please do not hesitate to contact us if you need any help.");
 
-#if AGREEMENT
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.Fields.AllowCreateAgreement", "Allow save credit card");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.Fields.AllowCreateAgreement.Hint", "Check to enable the customer to save a reference to a payment agreement on the initial purchase to be used for subsequent orders (AutoPay).");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.Fields.AgreementMaxAmount", "Max amount for saved payments");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.Fields.AgreementMaxAmount.Hint", "Enter a maximum amount that should be allowed for purchases made using saved payment agreements.");
+            this.AddOrUpdatePluginLocaleResource(
+                "Plugins.Payments.PayEx.Fields.AllowCreateAgreement", "Allow save credit card");
+            this.AddOrUpdatePluginLocaleResource(
+                "Plugins.Payments.PayEx.Fields.AllowCreateAgreement.Hint",
+                "Check to enable the customer to save a reference to a payment agreement on the initial purchase to be used for subsequent orders (AutoPay).");
+            this.AddOrUpdatePluginLocaleResource(
+                "Plugins.Payments.PayEx.Fields.AgreementMaxAmount", "Max amount for saved payments");
+            this.AddOrUpdatePluginLocaleResource(
+                "Plugins.Payments.PayEx.Fields.AgreementMaxAmount.Hint",
+                "Enter a maximum amount that should be allowed for purchases made using saved payment agreements.");
             this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.NewCard", "New card");
             this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.SavedCards", "Saved cards");
             this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.CreateAgreement", "Save my card");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.CreateAgreementMotivation", "- safely with PayEx. Your saved card may be used for future purchases.");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.CreateAgreementInfo", @"The credit card information entered in the next step will be saved by our safe payment provider PayEx. In future checkouts you may choose the same credit card without having to enter the information again.
-You will be prompted to enter your 3D secure code via an external link to your bank if you choose to save your credit card information.");
+            this.AddOrUpdatePluginLocaleResource(
+                "Plugins.Payments.PayEx.CreateAgreementMotivation",
+                "- safely with PayEx. Your saved card may be used for future purchases.");
+            this.AddOrUpdatePluginLocaleResource(
+                "Plugins.Payments.PayEx.CreateAgreementInfo",
+                @"The credit card information entered in the next step will be safely saved by our payment provider PayEx. In future checkouts you may choose the same credit card without having to enter the information again.
+You may be prompted to enter your 3D secure code via an external link to your bank if you choose to save your credit card information.");
 
             if (PaymentView == PaymentViewCreditCard)
-            {
                 _payExAgreementObjectContext.Install();
-            }
-#endif
 
             base.Install();
         }
@@ -666,8 +758,6 @@ You will be prompted to enter your 3D secure code via an external link to your b
                 DeleteLocaleResource("Fields.EncryptionKey");
                 DeleteLocaleResource("Fields.TransactionModeValues");
                 DeleteLocaleResource("Fields.ValidateOrderTotal");
-                DeleteLocaleResource("Fields.Email");
-                DeleteLocaleResource("Fields.RegistrationKey");
                 DeleteLocaleResource("RegistrationNotes");
                 DeleteLocaleResource("CurrencyNotes");
                 DeleteLocaleResource("TransactionCallbackNotes");
@@ -675,7 +765,6 @@ You will be prompted to enter your 3D secure code via an external link to your b
                 DeleteLocaleResource("PaymentFailedPageTitle");
                 DeleteLocaleResource("PaymentFailedInfo");
 
-#if AGREEMENT
                 DeleteLocaleResource("Fields.AllowCreateAgreement");
                 DeleteLocaleResource("Fields.AgreementMaxAmount");
                 DeleteLocaleResource("NewCard");
@@ -694,8 +783,8 @@ You will be prompted to enter your 3D secure code via an external link to your b
                         // Ignore table does not exist
                     }
                 }
-#endif
             }
+
             base.Uninstall();
         }
 
@@ -744,7 +833,8 @@ You will be prompted to enter your 3D secure code via an external link to your b
         public virtual string PaymentMethodDescription
             => _localizationService.GetResource("Plugins.Payments.PayEx.RedirectionTip");
 
-        protected bool RopcEnabled => _settingService.GetSettingByKey("realonepagecheckoutsettings.enablerealonepagecheckout", false, _storeContext.CurrentStore.Id, true);
+        protected bool RopcEnabled => _settingService.GetSettingByKey(
+            "realonepagecheckoutsettings.enablerealonepagecheckout", false, _storeContext.CurrentStore.Id, true);
 
         #endregion
     }

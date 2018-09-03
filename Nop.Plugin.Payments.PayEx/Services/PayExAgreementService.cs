@@ -8,9 +8,8 @@ namespace Nop.Plugin.Payments.PayEx.Services
 {
     public class PayExAgreementService : IPayExAgreementService
     {
-        
         #region Private Member Variables
-        
+
         private readonly IRepository<PayExAgreement> _payExAgreementRepository;
 
         #endregion
@@ -19,7 +18,7 @@ namespace Nop.Plugin.Payments.PayEx.Services
 
         public PayExAgreementService(IRepository<PayExAgreement> payExAgreementRepository)
         {
-            this._payExAgreementRepository = payExAgreementRepository;
+            _payExAgreementRepository = payExAgreementRepository;
         }
 
         #endregion
@@ -29,8 +28,8 @@ namespace Nop.Plugin.Payments.PayEx.Services
         public virtual IEnumerable<PayExAgreement> GetAll()
         {
             var query = from gp in _payExAgreementRepository.Table
-                        orderby gp.Id
-                        select gp;
+                orderby gp.Id
+                select gp;
             return query;
         }
 
@@ -46,9 +45,9 @@ namespace Nop.Plugin.Payments.PayEx.Services
         public PayExAgreement GetByAgreementRef(string agreementRef)
         {
             var query = from o in _payExAgreementRepository.Table
-                        where o.AgreementRef == agreementRef
-                        orderby o.Id
-                        select o;
+                where o.AgreementRef == agreementRef
+                orderby o.Id
+                select o;
             var record = query.FirstOrDefault();
             return record;
         }
@@ -59,9 +58,9 @@ namespace Nop.Plugin.Payments.PayEx.Services
                 return null;
 
             var query = from o in _payExAgreementRepository.Table
-                        where o.CustomerId == customerId
-                        orderby o.Id
-                        select o;
+                where o.CustomerId == customerId
+                orderby o.Id
+                select o;
             return query;
         }
 
@@ -72,10 +71,10 @@ namespace Nop.Plugin.Payments.PayEx.Services
 
             DateTime expireDate = DateTime.Now.AddDays(-14);
             var query = from o in _payExAgreementRepository.Table
-                        where o.CustomerId == customerId && o.PaymentMethodSystemName == paymentMethodSystemName &&
-                            o.PaymentMethodExpireDate.HasValue && o.PaymentMethodExpireDate.Value > expireDate
-                        orderby o.Id
-                        select o;
+                where o.CustomerId == customerId && o.PaymentMethodSystemName == paymentMethodSystemName &&
+                      o.PaymentMethodExpireDate.HasValue && o.PaymentMethodExpireDate.Value > expireDate
+                orderby o.Id
+                select o;
             return query;
         }
 
@@ -104,6 +103,5 @@ namespace Nop.Plugin.Payments.PayEx.Services
         }
 
         #endregion
-
     }
 }

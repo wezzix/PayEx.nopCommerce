@@ -1,11 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Nop.Core;
-using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Orders;
 using Nop.Core.Domain.Payments;
 using Nop.Plugin.Payments.PayEx.Domain;
@@ -16,8 +14,10 @@ using Nop.Services.Configuration;
 using Nop.Services.Logging;
 using Nop.Services.Orders;
 using Nop.Services.Payments;
+using Nop.Services.Security;
 using Nop.Web.Framework;
 using Nop.Web.Framework.Controllers;
+using Nop.Web.Framework.Mvc.Filters;
 using SD.Payex2;
 using SD.Payex2.Entities;
 
@@ -25,53 +25,52 @@ namespace Nop.Plugin.Payments.PayEx.Controllers
 {
     public class PaymentPayExController : BasePaymentController
     {
+        #region Constructors
+
+        public PaymentPayExController(
+            ISettingService settingService,
+            IPaymentService paymentService, IOrderService orderService,
+            IOrderProcessingService orderProcessingService,
+            ILogger logger,
+            IPermissionService permissionService,
+            IWebHelper webHelper,
+            IWorkContext workContext,
+            PaymentSettings paymentSettings,
+            PayExPaymentSettings payExPaymentSettings,
+            IPayExAgreementService payExAgreementService)
+        {
+            _settingService = settingService;
+            _paymentService = paymentService;
+            _orderService = orderService;
+            _orderProcessingService = orderProcessingService;
+            _logger = logger;
+            _permissionService = permissionService;
+            _webHelper = webHelper;
+            _payExPaymentSettings = payExPaymentSettings;
+            _paymentSettings = paymentSettings;
+            _payExAgreementService = payExAgreementService;
+        }
+
+        #endregion
+
         #region Private Member Variables
 
-        private const string PaymentSystemName = "Payments.PayEx";
+        internal const string PaymentSystemName = "Payments.PayEx";
+
         private readonly ISettingService _settingService;
         private readonly IPaymentService _paymentService;
         private readonly IOrderService _orderService;
         private readonly IOrderProcessingService _orderProcessingService;
         private readonly ILogger _logger;
+        private readonly IPermissionService _permissionService;
         private readonly IWebHelper _webHelper;
-        private readonly IWorkContext _workContext;
         private readonly PayExPaymentSettings _payExPaymentSettings;
         private readonly PaymentSettings _paymentSettings;
         private readonly IPayExAgreementService _payExAgreementService;
 
         #endregion
 
-        #region Constructors
-        public PaymentPayExController(ISettingService settingService,
-            IPaymentService paymentService, IOrderService orderService,
-            IOrderProcessingService orderProcessingService,
-            ILogger logger, IWebHelper webHelper,
-            IWorkContext workContext,
-            PaymentSettings paymentSettings,
-            PayExPaymentSettings payExPaymentSettings,
-            IPayExAgreementService payExAgreementService)
-        {
-            this._settingService = settingService;
-            this._paymentService = paymentService;
-            this._orderService = orderService;
-            this._orderProcessingService = orderProcessingService;
-            this._logger = logger;
-            this._webHelper = webHelper;
-            this._workContext = workContext;
-            this._payExPaymentSettings = payExPaymentSettings;
-            this._paymentSettings = paymentSettings;
-            this._payExAgreementService = payExAgreementService;
-        }
-        #endregion
-
         #region NonAction Methods
-
-        [NonAction]
-        public override IList<string> ValidatePaymentForm(FormCollection form)
-        {
-            var warnings = new List<string>();
-            return warnings;
-        }
 
         [NonAction]
         public async Task<Order> DoComplete(string orderRef, bool isCallback)
@@ -86,7 +85,7 @@ namespace Nop.Plugin.Payments.PayEx.Controllers
                 return null;
 
             // Call complete
-            CompleteResult result = processor.Complete(orderRef);
+            CompleteResult result = await processor.Complete(orderRef);
 
             // Attempt to get the order associated with the transaction.
             Order order = null;
@@ -108,7 +107,7 @@ namespace Nop.Plugin.Payments.PayEx.Controllers
                 }
 
                 // This should very rarely happen. But in case the transaction callback failed, we can check it here again.
-                result = processor.Complete(orderRef);
+                result = await processor.Complete(orderRef);
             }
 
             if (order != null && result.IsTransactionSuccessful)
@@ -120,25 +119,29 @@ namespace Nop.Plugin.Payments.PayEx.Controllers
                 note.AppendLine(string.Format("Amount: {0:n2}", result.Amount));
                 note.AppendLine("TransactionNumber: " + result.TransactionNumber);
                 note.AppendLine("TransactionStatus: " + result.TransactionStatus);
-                order.OrderNotes.Add(new OrderNote
-                {
-                    Note = note.ToString(),
-                    DisplayToCustomer = false,
-                    CreatedOnUtc = DateTime.UtcNow,
-                });
+                order.OrderNotes.Add(
+                    new OrderNote
+                    {
+                        Note = note.ToString(),
+                        DisplayToCustomer = false,
+                        CreatedOnUtc = DateTime.UtcNow,
+                    });
                 _orderService.UpdateOrder(order);
 
                 // Validate order total
-                if (_payExPaymentSettings.ValidateOrderTotal && !Math.Round(result.Amount.Value, 2).Equals(Math.Round(order.OrderTotal, 2)))
+                if (_payExPaymentSettings.ValidateOrderTotal
+                    && !Math.Round(result.Amount.Value, 2).Equals(Math.Round(order.OrderTotal, 2)))
                 {
-                    string errorStr = string.Format("PayEx Complete. Returned order total {0:n2} doesn't equal order total {1:n2}", result.Amount, order.OrderTotal);
+                    string errorStr = string.Format(
+                        "PayEx Complete. Returned order total {0:n2} doesn't equal order total {1:n2}", result.Amount,
+                        order.OrderTotal);
                     _logger.Error(errorStr, customer: order.Customer);
 
                     return order;
                 }
 
                 UpdateAgreement(result, order);
-                
+
                 UpdateOrderPaymentStatus(result, order);
 
                 return order;
@@ -166,6 +169,7 @@ namespace Nop.Plugin.Payments.PayEx.Controllers
                     note.AppendLine("TransactionErrorDescription: " + result.TransactionErrorDescription);
                     note.AppendLine("TransactionThirdPartyError: " + result.TransactionThirdPartyError);
                 }
+
                 note.AppendLine("PaymentMethod: " + result.PaymentMethod);
                 note.AppendLine(string.Format("Amount: {0:n2}", result.Amount));
                 note.AppendLine("AlreadyCompleted: " + result.AlreadyCompleted);
@@ -175,6 +179,7 @@ namespace Nop.Plugin.Payments.PayEx.Controllers
                 if (order != null)
                     AddOrderNote(order, note.ToString());
             }
+
             return null;
         }
 
@@ -190,7 +195,7 @@ namespace Nop.Plugin.Payments.PayEx.Controllers
             if (agreement == null)
             {
                 // Save the new agreement
-                agreement = new PayExAgreement()
+                agreement = new PayExAgreement
                 {
                     AgreementRef = result.AgreementRef,
                     CustomerId = order.Customer.Id,
@@ -233,8 +238,6 @@ namespace Nop.Plugin.Payments.PayEx.Controllers
                     if (_orderProcessingService.CanMarkOrderAsAuthorized(order))
                         _orderProcessingService.MarkAsAuthorized(order);
                     break;
-                default:
-                    break;
             }
         }
 
@@ -244,12 +247,13 @@ namespace Nop.Plugin.Payments.PayEx.Controllers
             if (order != null)
             {
                 // Add order note
-                order.OrderNotes.Add(new OrderNote()
-                {
-                    Note = note,
-                    DisplayToCustomer = false,
-                    CreatedOnUtc = DateTime.UtcNow
-                });
+                order.OrderNotes.Add(
+                    new OrderNote
+                    {
+                        Note = note,
+                        DisplayToCustomer = false,
+                        CreatedOnUtc = DateTime.UtcNow
+                    });
                 _orderService.UpdateOrder(order);
             }
         }
@@ -266,15 +270,19 @@ namespace Nop.Plugin.Payments.PayEx.Controllers
                 model.Message = "NOTE: Running against test servers.";
         }
 
-        [AdminAuthorize]
-        [ChildActionOnly]
-        public virtual ActionResult Configure()
+        [AuthorizeAdmin]
+        [Area(AreaNames.Admin)]
+        public virtual IActionResult Configure()
         {
+            if (!_permissionService.Authorize(StandardPermissionProvider.ManagePaymentMethods))
+                return AccessDeniedView();
+
             var model = new ConfigurationModel();
             // Transfer settings to configuration model
             model.AccountNumber = _payExPaymentSettings.AccountNumber;
             model.EncryptionKey = _payExPaymentSettings.EncryptionKey;
-            model.UseTestEnvironment = _payExPaymentSettings.UseTestEnvironment || _payExPaymentSettings.AccountNumber <= 0;
+            model.UseTestEnvironment =
+                _payExPaymentSettings.UseTestEnvironment || _payExPaymentSettings.AccountNumber <= 0;
             model.PassProductNamesAndTotals = _payExPaymentSettings.PassProductNamesAndTotals;
             model.ValidateOrderTotal = _payExPaymentSettings.ValidateOrderTotal;
             model.AdditionalFee = _payExPaymentSettings.AdditionalFee;
@@ -284,20 +292,26 @@ namespace Nop.Plugin.Payments.PayEx.Controllers
 
             PopulateConfigurationModel(model);
 
-            return View("~/Plugins/Payments.PayEx/Views/PaymentPayEx/Configure.cshtml", model);
+            return View("~/Plugins/Payments.PayEx/Views/Configure.cshtml", model);
         }
 
         [HttpPost]
-        [AdminAuthorize]
-        [ChildActionOnly]
-        public virtual ActionResult Configure(ConfigurationModel model)
+        [AdminAntiForgery]
+        [AuthorizeAdmin]
+        [Area(AreaNames.Admin)]
+        public virtual IActionResult Configure(ConfigurationModel model)
         {
+            if (!_permissionService.Authorize(StandardPermissionProvider.ManagePaymentMethods))
+                return AccessDeniedView();
+
             if (!ModelState.IsValid)
                 return Configure();
+
             // Save settings from configuration model
             _payExPaymentSettings.AccountNumber = model.AccountNumber;
             _payExPaymentSettings.EncryptionKey = model.EncryptionKey;
-            _payExPaymentSettings.UseTestEnvironment = model.UseTestEnvironment || _payExPaymentSettings.AccountNumber <= 0;
+            _payExPaymentSettings.UseTestEnvironment =
+                model.UseTestEnvironment || _payExPaymentSettings.AccountNumber <= 0;
             _payExPaymentSettings.PassProductNamesAndTotals = model.PassProductNamesAndTotals;
             _payExPaymentSettings.ValidateOrderTotal = model.ValidateOrderTotal;
             _payExPaymentSettings.AdditionalFee = model.AdditionalFee;
@@ -309,57 +323,10 @@ namespace Nop.Plugin.Payments.PayEx.Controllers
 
             PopulateConfigurationModel(model);
 
-            return View("~/Plugins/Payments.PayEx/Views/PaymentPayEx/Configure.cshtml", model);
+            return View("~/Plugins/Payments.PayEx/Views/Configure.cshtml", model);
         }
 
-        [ChildActionOnly]
-        public virtual ActionResult PaymentInfo()
-        {
-            var model = new PaymentInfoModel();
-#if AGREEMENT
-            if (!_workContext.CurrentCustomer.IsGuest())
-            {
-                IEnumerable<PayExAgreement> agreements = _payExAgreementService
-                    .GetValidAgreements(_workContext.CurrentCustomer.Id, PaymentSystemName)
-                    .OrderByDescending(o => o.LastUsedDate);
-                model.Agreements = agreements.Select(o => new SelectListItem()
-                    {
-                        Text = string.Format("{0} {1}", o.PaymentMethod, o.Name),
-                        Value = o.Id.ToString()
-                    }).ToList();
-                model.AllowCreateAgreement = _payExPaymentSettings.AllowCreateAgreement;
-            }
-#endif
-
-            return View("~/Plugins/Payments.PayEx/Views/PaymentPayEx/PaymentInfo.cshtml", model);
-        }
-
-        [NonAction]
-        public override ProcessPaymentRequest GetPaymentInfo(FormCollection form)
-        {
-            var paymentInfo = new ProcessPaymentRequest();
-            // Process info from the payment form
-#if AGREEMENT
-            if (!_workContext.CurrentCustomer.IsGuest() && _payExPaymentSettings.AllowCreateAgreement)
-            {
-                int agreementId;
-                int.TryParse(form["payexagreement"], out agreementId);
-                bool createAgreement = form["CreateAgreement"] != null && form["CreateAgreement"].Contains("true");
-                // There are no dedicated fields we can use, so reuse PurchaseOrderNumber for agreement info.
-                if (agreementId > 0)
-                {
-                    PayExAgreement agreement = _payExAgreementService.GetById(agreementId);
-                    if (agreement != null && agreement.CustomerId == _workContext.CurrentCustomer.Id)
-                        paymentInfo.CustomValues.Add(PayExPaymentProcessor.AgreementRefKey, agreement.AgreementRef);
-                }
-                else if (createAgreement)
-                    paymentInfo.CustomValues.Add(PayExPaymentProcessor.AgreementRefKey, "new");
-            }
-#endif
-            return paymentInfo;
-        }
-
-        public virtual async Task<ActionResult> Complete(string orderRef)
+        public virtual async Task<IActionResult> Complete(string orderRef)
         {
             var order = await DoComplete(orderRef, false);
             if (order?.PaymentStatus == PaymentStatus.Paid
@@ -367,12 +334,11 @@ namespace Nop.Plugin.Payments.PayEx.Controllers
                 return RedirectToRoute("CheckoutCompleted", new { orderId = order.Id });
 
             PaymentFailedModel model = new PaymentFailedModel { OrderId = order?.Id ?? 0 };
-            return View("~/Plugins/Payments.PayEx/Views/PaymentPayEx/PaymentFailed.cshtml", model);
+            return View("~/Plugins/Payments.PayEx/Views/PaymentFailed.cshtml", model);
         }
 
-        [ValidateInput(false)]
         [HttpPost]
-        public virtual async Task<ActionResult> TransactionCallback(FormCollection form)
+        public virtual async Task<IActionResult> TransactionCallback(IFormCollection form)
         {
             //string transactionRef = form["transactionRef"];
             //string transactionNumber = form["transactionNumber"];
@@ -381,14 +347,14 @@ namespace Nop.Plugin.Payments.PayEx.Controllers
 
 #if DEBUG
         [HttpGet]
-        public virtual async Task<ActionResult> TransactionCallbackGet(string orderRef)
+        public virtual async Task<IActionResult> TransactionCallbackGet(string orderRef)
         {
             // Used for debugging with GET.
             return await TransactionCallback(orderRef);
         }
 #endif
 
-        private async Task<ActionResult> TransactionCallback(string orderRef)
+        private async Task<IActionResult> TransactionCallback(string orderRef)
         {
             if (!string.IsNullOrWhiteSpace(orderRef))
             {
@@ -407,14 +373,13 @@ namespace Nop.Plugin.Payments.PayEx.Controllers
             return Content("FAILURE");
         }
 
-        public virtual ActionResult CancelOrder(FormCollection form)
+        public virtual IActionResult CancelOrder(IFormCollection form)
         {
-            string id = Request.QueryString["id"];
+            string id = Request.Query["id"];
             if (!string.IsNullOrEmpty(id))
             {
                 //return RedirectToRoute("OrderDetails", new { orderId = id });
-                int orderId;
-                if (int.TryParse(id, out orderId))
+                if (int.TryParse(id, out int orderId))
                 {
                     // Get order that was canceled
                     Order order = _orderService.GetOrderById(orderId);
@@ -425,14 +390,15 @@ namespace Nop.Plugin.Payments.PayEx.Controllers
                             // Reorder items - place order items in shopping cart.
                             _orderProcessingService.ReOrder(order);
                             // Delete the order to avoid customer confusion
-                            // Does not restore gift cards until issue fixed: https://nopcommerce.codeplex.com/workitem/11436
                             _orderProcessingService.DeleteOrder(order);
                         }
+
                         // Redirect customer to shopping cart
                         return RedirectToRoute("ShoppingCart");
                     }
                 }
             }
+
             return RedirectToAction("Index", "Home", new { area = "" });
         }
 

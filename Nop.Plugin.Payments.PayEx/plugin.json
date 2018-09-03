@@ -1,0 +1,11 @@
+﻿{
+  "Group": "Payment methods",
+  "FriendlyName": "Credit Card",
+  "SystemName": "Payments.PayEx",
+  "Version": "1.00",
+  "SupportedVersions": [ "4.00" ],
+  "Author": "Markus Kvist",
+  "DisplayOrder": 10,
+  "FileName": "Nop.Plugin.Payments.PayEx.dll",
+  "Description": "This plugin offers payment by Credit Card through PayEx"
+}

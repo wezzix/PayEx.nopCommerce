@@ -13,7 +13,5 @@ namespace Nop.Plugin.Payments.PayEx
         public bool PassProductNamesAndTotals { get; set; }
         public bool AllowCreateAgreement { get; set; }
         public decimal AgreementMaxAmount { get; set; }
-        public string Email { get; set; }
-        public string RegistrationKey { get; set; }
     }
 }

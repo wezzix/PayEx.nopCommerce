@@ -3,6 +3,7 @@ using System.Net;
 using System.ServiceModel;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using SD.Payex2.Crypto;
 using SD.Payex2.Entities;
 using SD.Payex2.Services.PxAgreement;
@@ -119,7 +120,7 @@ namespace SD.Payex2
         /// Documentation: http://www.payexpim.com/technical-reference/pxorder/initialize8/
         /// </summary>
         /// <param name="request">The parameters to the Initialize request</param>
-        public InitializeResult Initialize(InitializeRequest request)
+        public async Task<InitializeResult> Initialize(InitializeRequest request)
         {
             // Validation
             if (request == null)
@@ -173,7 +174,7 @@ namespace SD.Payex2
 
             // Invoke Initialize method on external PayEx PxOrder web service
             var payexOrder = GetPxOrderClient();
-            var xmlReturn = payexOrder.Initialize8(
+            var xmlReturn = await payexOrder.Initialize8Async(
                 Account.AccountNumber,
                 request.PurchaseOperation.ToPayEx(),
                 usedPrice,
@@ -205,7 +206,7 @@ namespace SD.Payex2
         /// Run this method for every order line you want to add to the order. It is run after initialize since you need the
         /// orderRef to reference the order lines to.
         /// </summary>
-        public BaseResult AddSingleOrderLine(AddSingleOrderLineRequest request)
+        public async Task<BaseResult> AddSingleOrderLine(AddSingleOrderLineRequest request)
         {
             // Validation
             if (request == null)
@@ -247,7 +248,7 @@ namespace SD.Payex2
 
             // Invoke Initialize method on external PayEx PxOrder web service
             var payexOrder = GetPxOrderClient();
-            var xmlReturn = payexOrder.AddSingleOrderLine2(
+            var xmlReturn = await payexOrder.AddSingleOrderLine2Async(
                 Account.AccountNumber, request.OrderRef, request.ItemNumber,
                 request.ItemDescription1,
                 request.ItemDescription2 ?? "",
@@ -273,7 +274,7 @@ namespace SD.Payex2
         /// Order Id that will be presented in PayEx report. This value have to be numeric if merchant have
         /// chosen to send orderId to the aquiring institution.
         /// </param>
-        public CaptureResult Capture(int transactionNumber, decimal amount, string orderID)
+        public async Task<CaptureResult> Capture(int transactionNumber, decimal amount, string orderID)
         {
             // Validation
             if (transactionNumber <= 0)
@@ -301,7 +302,7 @@ namespace SD.Payex2
 
             // Invoke Initialize method on external PayEx PxOrder web service
             var payexOrder = GetPxOrderClient();
-            var xmlReturn = payexOrder.Capture5(
+            var xmlReturn = await payexOrder.Capture5Async(
                 Account.AccountNumber,
                 transactionNumber,
                 amount.ToPayEx(),
@@ -328,7 +329,7 @@ namespace SD.Payex2
         /// Order Id that will be presented in PayEx report. This value have to be numeric if merchant have
         /// chosen to send orderId to the aquiring institution.
         /// </param>
-        public CreditResult Credit(int transactionNumber, decimal amount, string orderID)
+        public async Task<CreditResult> Credit(int transactionNumber, decimal amount, string orderID)
         {
             // Validation
             if (transactionNumber <= 0)
@@ -357,7 +358,7 @@ namespace SD.Payex2
 
             // Invoke Initialize method on external PayEx PxOrder web service
             var payexOrder = GetPxOrderClient();
-            var xmlReturn = payexOrder.Credit5(
+            var xmlReturn = await payexOrder.Credit5Async(
                 Account.AccountNumber,
                 transactionNumber,
                 convAmount,
@@ -376,7 +377,7 @@ namespace SD.Payex2
         /// Send a cancel transaction after an authorize transaction to cancel it.
         /// </summary>
         /// <param name="transactionNumber">The transactionNumber of the transaction you wish to cancel.</param>
-        public CancelResult Cancel(int transactionNumber)
+        public async Task<CancelResult> Cancel(int transactionNumber)
         {
             // Validation
             if (transactionNumber <= 0)
@@ -394,7 +395,7 @@ namespace SD.Payex2
 
             // Invoke Initialize method on external PayEx PxOrder web service
             var payexOrder = GetPxOrderClient();
-            var xmlReturn = payexOrder.Cancel2(Account.AccountNumber, transactionNumber, hash);
+            var xmlReturn = await payexOrder.Cancel2Async(Account.AccountNumber, transactionNumber, hash);
 
             // Parse the result and retrieve code-node to figure out if the service method was invoked successfully.
             var result = ResultParser.ParseCancelResult(xmlReturn);
@@ -416,7 +417,7 @@ namespace SD.Payex2
         /// </summary>
         /// <param name="orderRef"></param>
         /// <returns>A boolean indicating if the result was transferred without errors. See also TransactionComplete.</returns>
-        public CompleteResult Complete(string orderRef)
+        public async Task<CompleteResult> Complete(string orderRef)
         {
             // Validation
             if (string.IsNullOrEmpty(orderRef))
@@ -434,7 +435,7 @@ namespace SD.Payex2
 
             // Call web service
             var payexOrder = GetPxOrderClient();
-            var xmlReturn = payexOrder.Complete(Account.AccountNumber, orderRef, hash);
+            var xmlReturn = await payexOrder.CompleteAsync(Account.AccountNumber, orderRef, hash);
 
             // Parse the result
             var result = ResultParser.ParseCompleteResult(xmlReturn);
@@ -442,7 +443,7 @@ namespace SD.Payex2
             return result;
         }
 
-        public TransactionDetailsResult GetTransactionDetails(int transactionNumber)
+        public async Task<TransactionDetailsResult> GetTransactionDetails(int transactionNumber)
         {
             // Validation
             if (transactionNumber <= 0)
@@ -460,7 +461,7 @@ namespace SD.Payex2
 
             // Invoke Initialize method on external PayEx PxOrder web service
             var payexOrder = GetPxOrderClient();
-            var xmlReturn = payexOrder.GetTransactionDetails2(Account.AccountNumber, transactionNumber, hash);
+            var xmlReturn = await payexOrder.GetTransactionDetails2Async(Account.AccountNumber, transactionNumber, hash);
 
             // Parse the result and retrieve code-node to figure out if the service method was invoked successfully.
             var result = ResultParser.ParseTransactionDetailsResult(xmlReturn);
@@ -477,7 +478,7 @@ namespace SD.Payex2
         /// Documentation: http://www.payexpim.com/technical-reference/pxagreement/createagreement3/
         /// </summary>
         /// <param name="request">The parameters to the CreateAgreement request</param>
-        public CreateAgreementResult CreateAgreement(CreateAgreementRequest request)
+        public async Task<CreateAgreementResult> CreateAgreement(CreateAgreementRequest request)
         {
             // Validation
             if (request == null)
@@ -503,7 +504,7 @@ namespace SD.Payex2
 
             // Invoke Initialize method on external PayEx PxOrder web service
             var payexAgreement = GetPxAgreementClient();
-            var xmlReturn = payexAgreement.CreateAgreement3(
+            var xmlReturn = await payexAgreement.CreateAgreement3Async(
                 Account.AccountNumber,
                 request.MerchantRef ?? "",
                 request.Description ?? "",
@@ -528,7 +529,7 @@ namespace SD.Payex2
         /// Documentation: http://www.payexpim.com/technical-reference/pxagreement/autopay/
         /// </summary>
         /// <param name="request">The parameters to the AutoPay request</param>
-        public AutoPayResult AutoPay(AutoPayRequest request)
+        public async Task<AutoPayResult> AutoPay(AutoPayRequest request)
         {
             // Validation
             if (request == null)
@@ -552,7 +553,7 @@ namespace SD.Payex2
 
             // Invoke Initialize method on external PayEx PxOrder web service
             var payexAgreement = GetPxAgreementClient();
-            var xmlReturn = payexAgreement.AutoPay3(
+            var xmlReturn = await payexAgreement.AutoPay3Async(
                 Account.AccountNumber,
                 request.AgreementRef ?? "",
                 request.Amount.ToPayEx(),
@@ -574,7 +575,7 @@ namespace SD.Payex2
         /// All recurring agreements connected to the agreementRef will also be deleted.
         /// </summary>
         /// <param name="request">Ref to an agreement that will be deleted.</param>
-        public DeleteAgreementResult DeleteAgreement(string agreementRef)
+        public async Task<DeleteAgreementResult> DeleteAgreement(string agreementRef)
         {
             // Build string for md5 including all fields except empty strings and description field
             var hashInput = new StringBuilder();
@@ -588,7 +589,7 @@ namespace SD.Payex2
 
             // Invoke Initialize method on external PayEx PxOrder web service
             var payexAgreement = GetPxAgreementClient();
-            var xmlReturn = payexAgreement.DeleteAgreement(Account.AccountNumber, agreementRef, hash);
+            var xmlReturn = await payexAgreement.DeleteAgreementAsync(Account.AccountNumber, agreementRef, hash);
 
             // Parse the result
             var result = ResultParser.ParseDeleteAgreementResult(xmlReturn);

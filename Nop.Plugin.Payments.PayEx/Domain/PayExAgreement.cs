@@ -1,5 +1,5 @@
-﻿using Nop.Core;
-using System;
+﻿using System;
+using Nop.Core;
 
 namespace Nop.Plugin.Payments.PayEx.Domain
 {

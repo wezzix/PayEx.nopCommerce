@@ -1,6 +1,6 @@
-# PayEx payment provider for nopCommerce with AutoPay (Direct Debit / Debit Card / Credit Card)
+# PayEx payment provider for nopCommerce with AutoPay (Direct Debit / Debit Card / Credit Card / Swish)
 
-This is a free extension for the [PayEx payment provider](http://www.payex.com/), including Credit/Debit Card as well as Direct Debit. They are included as separate plugins so you can choose which payment methods you wish to use.
+This is a free extension for the [PayEx payment provider](http://www.payex.com/), including Credit/Debit Card as well as Direct Debit and Swish. They are included as separate plugins so you can choose which payment methods you wish to use.
 
 **No account is needed for testing, as a default test accound is built in. Just install, enable and go!**
 
@@ -41,8 +41,7 @@ If you have an existing Git project, I would suggest adding this repository as a
 2.  Make sure 'Use Test Mode' is checked. Account number is optional. If not specified, a default test account for nopCommerce users will be used.
 3.  Optional: Enter your Transaction Callback URL in PayEx Merchant Admin for your TEST account.
 4.  Activate PayEx in 'Configuration', 'Payment Methods'
-5.  Make a test transaction using [fake card/direct debit details from PayEx](http://www.payexpim.com/test-data/test-purchase-data/).  
-    (Valid test data until 201802: Visa, 4581090329655682, CVC 210, Expires: 02/18)
+5.  Make a test transaction using [fake card/direct debit details from PayEx](http://www.payexpim.com/test-data/test-purchase-data/). Please note that Swish is not enabled in the test account and will give an error message.
 
 ## Production mode:
 

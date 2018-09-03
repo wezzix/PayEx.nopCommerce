@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Data.Entity;
 using System.Data.Entity.Infrastructure;
-using System.Linq;
 using Nop.Core;
 using Nop.Data;
 
@@ -42,12 +41,13 @@ namespace Nop.Plugin.Payments.PayEx.Data
 
         #region IDbContext Members
 
-        public new IDbSet<TEntity> Set<TEntity>() where TEntity : Core.BaseEntity
+        public new IDbSet<TEntity> Set<TEntity>() where TEntity : BaseEntity
         {
             return base.Set<TEntity>();
         }
 
-        public IList<TEntity> ExecuteStoredProcedureList<TEntity>(string commandText, params object[] parameters) where TEntity : BaseEntity, new()
+        public IList<TEntity> ExecuteStoredProcedureList<TEntity>(string commandText, params object[] parameters)
+            where TEntity : BaseEntity, new()
         {
             throw new NotImplementedException();
         }
@@ -57,7 +57,8 @@ namespace Nop.Plugin.Payments.PayEx.Data
             throw new NotImplementedException();
         }
 
-        public int ExecuteSqlCommand(string sql, bool doNotEnsureTransaction = false, int? timeout = null, params object[] parameters)
+        public int ExecuteSqlCommand(
+            string sql, bool doNotEnsureTransaction = false, int? timeout = null, params object[] parameters)
         {
             throw new NotImplementedException();
         }
@@ -75,6 +76,7 @@ namespace Nop.Plugin.Payments.PayEx.Data
         }
 
         #endregion
+
         #endregion
 
         #region Properties
@@ -84,14 +86,8 @@ namespace Nop.Plugin.Payments.PayEx.Data
         /// </summary>
         public virtual bool ProxyCreationEnabled
         {
-            get
-            {
-                return this.Configuration.ProxyCreationEnabled;
-            }
-            set
-            {
-                this.Configuration.ProxyCreationEnabled = value;
-            }
+            get { return Configuration.ProxyCreationEnabled; }
+            set { Configuration.ProxyCreationEnabled = value; }
         }
 
         /// <summary>
@@ -99,14 +95,8 @@ namespace Nop.Plugin.Payments.PayEx.Data
         /// </summary>
         public virtual bool AutoDetectChangesEnabled
         {
-            get
-            {
-                return this.Configuration.AutoDetectChangesEnabled;
-            }
-            set
-            {
-                this.Configuration.AutoDetectChangesEnabled = value;
-            }
+            get { return Configuration.AutoDetectChangesEnabled; }
+            set { Configuration.AutoDetectChangesEnabled = value; }
         }
 
         #endregion

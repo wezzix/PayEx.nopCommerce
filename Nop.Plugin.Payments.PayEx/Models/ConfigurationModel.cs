@@ -1,7 +1,6 @@
-﻿using System.ComponentModel;
-using System.Web.Mvc;
-using Nop.Web.Framework;
-using Nop.Web.Framework.Mvc;
+﻿using Microsoft.AspNetCore.Mvc.Rendering;
+using Nop.Web.Framework.Mvc.ModelBinding;
+using Nop.Web.Framework.Mvc.Models;
 
 namespace Nop.Plugin.Payments.PayEx.Models
 {
@@ -14,12 +13,13 @@ namespace Nop.Plugin.Payments.PayEx.Models
         public string EncryptionKey { get; set; }
 
         public int TransactionModeId { get; set; }
+
         [NopResourceDisplayName("Plugins.Payments.PayEx.Fields.TransactionModeValues")]
         public SelectList TransactionModeValues { get; set; }
 
         [NopResourceDisplayName("Plugins.Payments.PayEx.Fields.UseTestEnvironment")]
         public bool UseTestEnvironment { get; set; }
-        
+
         [NopResourceDisplayName("Plugins.Payments.PayEx.Fields.AdditionalFee")]
         public decimal AdditionalFee { get; set; }
 

@@ -1,8 +1,0 @@
-﻿Group: Payment methods
-FriendlyName: Credit Card
-SystemName: Payments.PayEx
-Version: 1.00
-SupportedVersions: 3.90
-Author: Markus Kvist
-DisplayOrder: 10
-FileName: Nop.Plugin.Payments.PayEx.dll

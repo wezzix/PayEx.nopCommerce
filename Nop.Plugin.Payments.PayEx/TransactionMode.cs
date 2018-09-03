@@ -3,15 +3,16 @@ namespace Nop.Plugin.Payments.PayEx
     /// <summary>
     /// Represents PayEx payment processor transaction mode
     /// </summary>
-    public enum TransactionMode : int
+    public enum TransactionMode
     {
         /// <summary>
         /// Authorize
         /// </summary>
         Authorize = 1,
+
         /// <summary>
         /// Authorize and capture
         /// </summary>
-        AuthorizeAndCapture= 2
+        AuthorizeAndCapture = 2
     }
 }

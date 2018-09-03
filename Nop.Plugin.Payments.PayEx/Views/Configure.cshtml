@@ -1,0 +1,105 @@
+﻿@{
+    Layout = "_ConfigurePlugin";
+}
+@model ConfigurationModel
+@using Nop.Plugin.Payments.PayEx.Models;
+
+<form asp-controller="PaymentPayEx" asp-action="Configure" method="post">
+    <div class="panel-group">
+        <div class="panel panel-default">
+            <div class="panel-body">
+
+                <p>@T("Plugins.Payments.PayEx.CurrencyNotes")</p>
+                <p>@T("Plugins.Payments.PayEx.TransactionCallbackNotes") @Model.TransactionCallbackUrl</p>
+                <p><strong>@(Model.Message)</strong></p>
+
+                <div class="form-group">
+                    <div class="col-md-3">
+                        <nop-label asp-for="TransactionModeValues" />
+                    </div>
+                    <div class="col-md-9">
+                        <nop-select asp-for="TransactionModeId" asp-items="Model.TransactionModeValues" />
+                        <span asp-validation-for="TransactionModeId"></span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="col-md-3">
+                        <nop-label asp-for="PassProductNamesAndTotals" />
+                    </div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="PassProductNamesAndTotals" />
+                        <span asp-validation-for="PassProductNamesAndTotals"></span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="col-md-3">
+                        <nop-label asp-for="AllowCreateAgreement" />
+                    </div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="AllowCreateAgreement" />
+                        <span asp-validation-for="AllowCreateAgreement"></span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="col-md-3">
+                        <nop-label asp-for="AgreementMaxAmount" />
+                    </div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="AgreementMaxAmount" />
+                        <span asp-validation-for="AgreementMaxAmount"></span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="col-md-3">
+                        <nop-label asp-for="ValidateOrderTotal" />
+                    </div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="ValidateOrderTotal" />
+                        <span asp-validation-for="ValidateOrderTotal"></span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="col-md-3">
+                        <nop-label asp-for="AdditionalFee" />
+                    </div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="AdditionalFee" />
+                        <span asp-validation-for="AdditionalFee"></span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="col-md-3">
+                        <nop-label asp-for="AccountNumber" />
+                    </div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="AccountNumber" />
+                        <span asp-validation-for="AccountNumber"></span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="col-md-3">
+                        <nop-label asp-for="EncryptionKey" />
+                    </div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="EncryptionKey" />
+                        <span asp-validation-for="EncryptionKey"></span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="col-md-3">
+                        <nop-label asp-for="UseTestEnvironment" />
+                    </div>
+                    <div class="col-md-9">
+                        <nop-editor asp-for="UseTestEnvironment" />
+                        <span asp-validation-for="UseTestEnvironment"></span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="col-md-9 col-md-offset-3">
+                        <input type="submit" name="save" class="btn bg-primary" value="@T("Admin.Common.Save")" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>

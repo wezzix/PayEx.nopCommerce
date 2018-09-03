@@ -1,0 +1,78 @@
+﻿@{
+    Layout = "";
+}
+@model Nop.Plugin.Payments.PayEx.Models.PaymentInfoModel
+
+@if (Model.AllowCreateAgreement)
+{
+    <table width="100%" cellspacing="1" cellpadding="0" border="0" id="payex-create-agreement">
+        @if (Model.Agreements.Count > 0)
+        {
+        <tr>
+            <td></td>
+            <td>
+                <strong>@T("Plugins.Payments.PayEx.SavedCards")</strong>
+            </td>
+        </tr>
+        for (int i = 0; i < Model.Agreements.Count; i++)
+        {
+            var item = Model.Agreements[i];
+        <tr>
+            <td>
+            </td>
+            <td>
+                <input id="payexagreement_@(i)" type="radio" name="payexagreement" value="@(item.Value)" @(i == 0 ? Html.Raw(" checked=\"checked\"") : null) />
+                <label for="payexagreement_@(i)">@item.Text</label>
+            </td>
+        </tr>
+        }
+        <tr>
+            <td>
+            </td>
+            <td>
+                <input id="payexagreement_new" type="radio" name="payexagreement" value="0" />
+                <label for="payexagreement_new">@T("Plugins.Payments.PayEx.NewCard")</label>
+            </td>
+        </tr>
+        }
+        <tr id="CreateAgreementBox">
+            <td></td>
+            <td>
+                <nop-editor asp-for="CreateAgreement" />
+                <label asp-for="CreateAgreement"><strong>@T("Plugins.Payments.PayEx.CreateAgreement")</strong></label> @T("Plugins.Payments.PayEx.CreateAgreementMotivation")
+            </td>
+        </tr>
+    </table>
+}
+<table width="100%" cellspacing="2" cellpadding="1" border="0" id="lblRedirectInfo">
+    <tr>
+        <td></td>
+        <td>
+            <p>@T("Plugins.Payments.PayEx.RedirectionTip")</p>
+        </td>
+    </tr>
+</table>
+<table width="100%" cellspacing="2" cellpadding="1" border="0" id="lblCreateAgreementInfo">
+    <tr>
+        <td></td>
+        <td>
+            <p>@T("Plugins.Payments.PayEx.CreateAgreementInfo")</p>
+        </td>
+    </tr>
+</table>
+
+<script type="text/javascript">
+    function setPayexVisibility() {
+        var agreementId = $("input:radio[name=payexagreement]:checked").val();
+        var newCard = agreementId == "0" || agreementId == null;
+        var createAgreement = $('#CreateAgreement:checked').val() != null;
+        $("#lblRedirectInfo").toggle(newCard);
+        $("#CreateAgreementBox").toggle(newCard);
+        $("#lblCreateAgreementInfo").toggle(createAgreement && newCard);
+    }
+
+    $("input:radio[name=payexagreement]").change(setPayexVisibility);
+    $("#CreateAgreement").change(setPayexVisibility);
+    setPayexVisibility();
+
+</script>

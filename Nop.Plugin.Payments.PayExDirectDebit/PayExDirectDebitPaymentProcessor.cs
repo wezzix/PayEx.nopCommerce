@@ -1,41 +1,39 @@
-using System.Web;
+using System.Collections.Generic;
+using Microsoft.AspNetCore.Http;
 using Nop.Core;
-using Nop.Core.Domain;
 using Nop.Core.Domain.Directory;
 using Nop.Plugin.Payments.PayEx;
+using Nop.Plugin.Payments.PayEx.Data;
+using Nop.Plugin.Payments.PayEx.Services;
 using Nop.Services.Configuration;
 using Nop.Services.Directory;
 using Nop.Services.Localization;
 using Nop.Services.Logging;
 using Nop.Services.Orders;
+using Nop.Services.Payments;
 using Nop.Services.Tax;
-using Nop.Plugin.Payments.PayEx.Data;
-using System.Web.Routing;
 
 namespace Nop.Plugin.Payments.PayExDirectDebit
 {
     /// <summary>
     /// PayEx Direct Debit payment processor
     /// </summary>
-    public class PayExDirectDebitPaymentProcessor : Nop.Plugin.Payments.PayEx.PayExPaymentProcessor
+    public class PayExDirectDebitPaymentProcessor : PayExPaymentProcessor
     {
-        public PayExDirectDebitPaymentProcessor(PayExPaymentSettings payExPaymentSettings, PayExAgreementObjectContext payExAgreementObjectContext, ISettingService settingService, ICurrencyService currencyService, CurrencySettings currencySettings, IWebHelper webHelper, ICheckoutAttributeParser checkoutAttributeParser, ITaxService taxService, HttpContextBase httpContext, ILogger logger, IOrderService orderService, ILocalizationService localizationService, IStoreContext storeContext, IWorkContext workContext)
-            : base(payExPaymentSettings, payExAgreementObjectContext, settingService, currencyService, currencySettings, webHelper, checkoutAttributeParser, taxService, httpContext, logger, orderService, localizationService, storeContext, workContext)
+        public PayExDirectDebitPaymentProcessor(
+            PayExPaymentSettings payExPaymentSettings, PayExAgreementObjectContext payExAgreementObjectContext,
+            IPayExAgreementService payExAgreementService, ISettingService settingService,
+            ICurrencyService currencyService, CurrencySettings currencySettings, IWebHelper webHelper,
+            ICheckoutAttributeParser checkoutAttributeParser, ITaxService taxService,
+            IHttpContextAccessor httpContextAccessor,
+            ILogger logger, IOrderService orderService, ILocalizationService localizationService,
+            IStoreContext storeContext, IWorkContext workContext)
+            : base(
+                payExPaymentSettings, payExAgreementObjectContext, payExAgreementService, settingService,
+                currencyService, currencySettings, webHelper, checkoutAttributeParser, taxService, httpContextAccessor,
+                logger,
+                orderService, localizationService, storeContext, workContext)
         {
-            
-        }
-
-        /// <summary>
-        /// Gets a route for payment info
-        /// </summary>
-        /// <param name="actionName">Action name</param>
-        /// <param name="controllerName">Controller name</param>
-        /// <param name="routeValues">Route values</param>
-        public override void GetPaymentInfoRoute(out string actionName, out string controllerName, out RouteValueDictionary routeValues)
-        {
-            actionName = "PaymentInfo";
-            controllerName = "PaymentPayExDirectDebit";
-            routeValues = new RouteValueDictionary() { { "Namespaces", "Nop.Plugin.Payments.PayExDirectDebit.Controllers" }, { "area", null } };
         }
 
         /// <summary>
@@ -44,12 +42,42 @@ namespace Nop.Plugin.Payments.PayExDirectDebit
         /// </summary>
         protected override string PaymentView => "DIRECTDEBIT";
 
+        #region IPaymentMethod Methods
+
+        /// <summary>
+        /// Validate payment form
+        /// </summary>
+        /// <param name="form">The parsed form values</param>
+        /// <returns>List of validating errors</returns>
+        public override IList<string> ValidatePaymentForm(IFormCollection form) =>
+            new List<string>();
+
+        /// <summary>
+        /// Get payment information
+        /// </summary>
+        /// <param name="form">The parsed form values</param>
+        /// <returns>Payment info holder</returns>
+        public override ProcessPaymentRequest GetPaymentInfo(IFormCollection form) =>
+            new ProcessPaymentRequest();
+
+        /// <summary>
+        /// Gets a view component for displaying plugin in public store ("payment info" checkout step)
+        /// </summary>
+        public override void GetPublicViewComponent(out string viewComponentName) =>
+            viewComponentName = "PaymentPayExDirectDebit";
+
+        public override bool SkipPaymentInfo => !RopcEnabled;
+
+        #endregion
+
         #region BasePlugin Methods
 
         public override void Install()
         {
             this.AddOrUpdatePluginLocaleResource("Plugins.FriendlyName.Payments.PayExDirectDebit", "Direct Debit");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayExDirectDebit.RedirectionTip", "You will be redirected to the PayEx site to complete the payment, once you click Confirm.");
+            this.AddOrUpdatePluginLocaleResource(
+                "Plugins.Payments.PayExDirectDebit.RedirectionTip",
+                "You will be redirected to the PayEx site to complete the payment, once you click Confirm.");
 
             base.Install();
         }
@@ -63,7 +91,5 @@ namespace Nop.Plugin.Payments.PayExDirectDebit
         }
 
         #endregion
-
-        public override bool SkipPaymentInfo => !RopcEnabled;
     }
 }
