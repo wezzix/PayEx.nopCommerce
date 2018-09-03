@@ -1,11 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net461</TargetFramework>
+    <TargetFramework>netcoreapp2.1</TargetFramework>
     <Copyright>Copyright © Markus Kvist</Copyright> 
     <Company>StjärnDistribution AB</Company> 
     <Authors>Markus Kvist</Authors> 
-    <Version>1.00</Version> 
     <Description>This plugin offers payment by direct debit through PayEx</Description>
     <PackageProjectUrl>http://www.nopcommerce.com/</PackageProjectUrl> 
     <RepositoryUrl>https://github.com/wezzix/PayEx.nopCommerce</RepositoryUrl> 

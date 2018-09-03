@@ -1,102 +1,137 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Data.Entity;
-using System.Data.Entity.Infrastructure;
+using System.Linq;
+using Microsoft.EntityFrameworkCore;
 using Nop.Core;
 using Nop.Data;
+using Nop.Data.Extensions;
+using Nop.Plugin.Payments.PayEx.Domain;
 
 namespace Nop.Plugin.Payments.PayEx.Data
 {
+    /// <summary>
+    /// Represents plugin object context
+    /// </summary>
     public class PayExAgreementObjectContext : DbContext, IDbContext
     {
-        public PayExAgreementObjectContext(string nameOrConnectionString)
-            : base(nameOrConnectionString)
+        #region Ctor
+
+        public PayExAgreementObjectContext(DbContextOptions<PayExAgreementObjectContext> options) : base(options)
         {
         }
 
-        protected override void OnModelCreating(DbModelBuilder modelBuilder)
-        {
-            modelBuilder.Configurations.Add(new PayExAgreementMap());
+        #endregion
 
+        #region Utilities
+
+        /// <summary>
+        /// Further configuration the model
+        /// </summary>
+        /// <param name="modelBuilder">Model muilder</param>
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.ApplyConfiguration(new PayExAgreementMap());
             base.OnModelCreating(modelBuilder);
         }
 
-        #region Public Methods
+        #endregion
 
-        public string CreateDatabaseInstallationScript()
-        {
-            return ((IObjectContextAdapter)this).ObjectContext.CreateDatabaseScript();
-        }
+        #region Methods
 
-        public void Install()
-        {
-            Database.ExecuteSqlCommand(CreateDatabaseInstallationScript());
-            SaveChanges();
-        }
-
-        public void Uninstall()
-        {
-            this.DropPluginTable("PayExAgreement");
-        }
-
-        #region IDbContext Members
-
-        public new IDbSet<TEntity> Set<TEntity>() where TEntity : BaseEntity
+        /// <summary>
+        /// Creates a DbSet that can be used to query and save instances of entity
+        /// </summary>
+        /// <typeparam name="TEntity">Entity type</typeparam>
+        /// <returns>A set for the given entity type</returns>
+        public new virtual DbSet<TEntity> Set<TEntity>() where TEntity : BaseEntity
         {
             return base.Set<TEntity>();
         }
 
-        public IList<TEntity> ExecuteStoredProcedureList<TEntity>(string commandText, params object[] parameters)
-            where TEntity : BaseEntity, new()
+        /// <summary>
+        /// Generate a script to create all tables for the current model
+        /// </summary>
+        /// <returns>A SQL script</returns>
+        public virtual string GenerateCreateScript()
         {
-            throw new NotImplementedException();
+            return Database.GenerateCreateScript();
         }
 
-        public IEnumerable<TElement> SqlQuery<TElement>(string sql, params object[] parameters)
-        {
-            throw new NotImplementedException();
-        }
-
-        public int ExecuteSqlCommand(
-            string sql, bool doNotEnsureTransaction = false, int? timeout = null, params object[] parameters)
+        /// <summary>
+        /// Creates a LINQ query for the query type based on a raw SQL query
+        /// </summary>
+        /// <typeparam name="TQuery">Query type</typeparam>
+        /// <param name="sql">The raw SQL query</param>
+        /// <returns>An IQueryable representing the raw SQL query</returns>
+        public virtual IQueryable<TQuery> QueryFromSql<TQuery>(string sql) where TQuery : class
         {
             throw new NotImplementedException();
         }
 
         /// <summary>
-        /// Detach an entity
+        /// Creates a LINQ query for the entity based on a raw SQL query
         /// </summary>
+        /// <typeparam name="TEntity">Entity type</typeparam>
+        /// <param name="sql">The raw SQL query</param>
+        /// <param name="parameters">The values to be assigned to parameters</param>
+        /// <returns>An IQueryable representing the raw SQL query</returns>
+        public virtual IQueryable<TEntity> EntityFromSql<TEntity>(string sql, params object[] parameters)
+            where TEntity : BaseEntity
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <summary>
+        /// Executes the given SQL against the database
+        /// </summary>
+        /// <param name="sql">The SQL to execute</param>
+        /// <param name="doNotEnsureTransaction">
+        /// true - the transaction creation is not ensured; false - the transaction creation
+        /// is ensured.
+        /// </param>
+        /// <param name="timeout">
+        /// The timeout to use for command. Note that the command timeout is distinct from the connection
+        /// timeout, which is commonly set on the database connection string
+        /// </param>
+        /// <param name="parameters">Parameters to use with the SQL</param>
+        /// <returns>The number of rows affected</returns>
+        public virtual int ExecuteSqlCommand(
+            RawSqlString sql, bool doNotEnsureTransaction = false, int? timeout = null, params object[] parameters)
+        {
+            using (var transaction = Database.BeginTransaction())
+            {
+                var result = Database.ExecuteSqlCommand(sql, parameters);
+                transaction.Commit();
+
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Detach an entity from the context
+        /// </summary>
+        /// <typeparam name="TEntity">Entity type</typeparam>
         /// <param name="entity">Entity</param>
-        public void Detach(object entity)
+        public virtual void Detach<TEntity>(TEntity entity) where TEntity : BaseEntity
         {
-            if (entity == null)
-                throw new ArgumentNullException("entity");
-
-            ((IObjectContextAdapter)this).ObjectContext.Detach(entity);
-        }
-
-        #endregion
-
-        #endregion
-
-        #region Properties
-
-        /// <summary>
-        /// Gets or sets a value indicating whether proxy creation setting is enabled (used in EF)
-        /// </summary>
-        public virtual bool ProxyCreationEnabled
-        {
-            get { return Configuration.ProxyCreationEnabled; }
-            set { Configuration.ProxyCreationEnabled = value; }
+            throw new NotImplementedException();
         }
 
         /// <summary>
-        /// Gets or sets a value indicating whether auto detect changes setting is enabled (used in EF)
+        /// Install object context
         /// </summary>
-        public virtual bool AutoDetectChangesEnabled
+        public void Install()
         {
-            get { return Configuration.AutoDetectChangesEnabled; }
-            set { Configuration.AutoDetectChangesEnabled = value; }
+            //create tables
+            this.ExecuteSqlScript(GenerateCreateScript());
+        }
+
+        /// <summary>
+        /// Uninstall object context
+        /// </summary>
+        public void Uninstall()
+        {
+            //drop the table
+            this.DropPluginTable(nameof(PayExAgreement));
         }
 
         #endregion

@@ -8,7 +8,7 @@ using Nop.Data;
 using Nop.Plugin.Payments.PayEx.Data;
 using Nop.Plugin.Payments.PayEx.Domain;
 using Nop.Plugin.Payments.PayEx.Services;
-using Nop.Web.Framework.Infrastructure;
+using Nop.Web.Framework.Infrastructure.Extensions;
 
 namespace Nop.Plugin.Payments.PayEx.Infrastructure
 {
@@ -21,7 +21,7 @@ namespace Nop.Plugin.Payments.PayEx.Infrastructure
         public void Register(ContainerBuilder builder, ITypeFinder typeFinder, NopConfig config)
         {
             // Register custom object context
-            this.RegisterPluginDataContext<PayExAgreementObjectContext>(builder, ContextName);
+            builder.RegisterPluginDataContext<PayExAgreementObjectContext>(ContextName);
 
             // Register services
             builder.RegisterType<PayExAgreementService>().As<IPayExAgreementService>();

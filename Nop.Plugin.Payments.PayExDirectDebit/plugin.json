@@ -3,7 +3,7 @@
   "FriendlyName": "Direct Debit",
   "SystemName": "Payments.PayExDirectDebit",
   "Version": "1.00",
-  "SupportedVersions": [ "4.00" ],
+  "SupportedVersions": [ "4.10" ],
   "Author": "Markus Kvist",
   "DisplayOrder": 11,
   "FileName": "Nop.Plugin.Payments.PayExDirectDebit.dll",

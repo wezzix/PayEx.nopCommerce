@@ -10,7 +10,6 @@ using Nop.Core.Domain.Directory;
 using Nop.Core.Domain.Orders;
 using Nop.Core.Domain.Payments;
 using Nop.Core.Plugins;
-using Nop.Plugin.Payments.PayEx.Controllers;
 using Nop.Plugin.Payments.PayEx.Data;
 using Nop.Plugin.Payments.PayEx.Domain;
 using Nop.Plugin.Payments.PayEx.Services;
@@ -34,37 +33,39 @@ namespace Nop.Plugin.Payments.PayEx
         #region Constructor
 
         public PayExPaymentProcessor(
-            PayExPaymentSettings payExPaymentSettings,
-            PayExAgreementObjectContext payExAgreementObjectContext,
-            IPayExAgreementService payExAgreementService,
-            ISettingService settingService,
-            ICurrencyService currencyService,
             CurrencySettings currencySettings,
-            IWebHelper webHelper,
             ICheckoutAttributeParser checkoutAttributeParser,
-            ITaxService taxService,
+            ICurrencyService currencyService,
             IHttpContextAccessor httpContextAccessor,
+            ILocalizationService localizationService,
             ILogger logger,
             IOrderService orderService,
-            ILocalizationService localizationService,
+            IPayExAgreementService payExAgreementService,
+            IPaymentService paymentService,
+            ISettingService settingService,
             IStoreContext storeContext,
-            IWorkContext workContext)
+            ITaxService taxService,
+            IWebHelper webHelper,
+            IWorkContext workContext,
+            PayExAgreementObjectContext payExAgreementObjectContext,
+            PayExPaymentSettings payExPaymentSettings)
         {
-            _payExPaymentSettings = payExPaymentSettings;
-            _payExAgreementObjectContext = payExAgreementObjectContext;
-            _settingService = settingService;
-            _currencyService = currencyService;
             _currencySettings = currencySettings;
-            _webHelper = webHelper;
             _checkoutAttributeParser = checkoutAttributeParser;
-            _taxService = taxService;
+            _currencyService = currencyService;
             _httpContextAccessor = httpContextAccessor;
+            _localizationService = localizationService;
             _logger = logger;
             _orderService = orderService;
-            _localizationService = localizationService;
-            _storeContext = storeContext;
-            _workContext = workContext;
             _payExAgreementService = payExAgreementService;
+            _paymentService = paymentService;
+            _settingService = settingService;
+            _storeContext = storeContext;
+            _taxService = taxService;
+            _webHelper = webHelper;
+            _workContext = workContext;
+            _payExAgreementObjectContext = payExAgreementObjectContext;
+            _payExPaymentSettings = payExPaymentSettings;
         }
 
         #endregion
@@ -84,6 +85,7 @@ namespace Nop.Plugin.Payments.PayEx
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly ILogger _logger;
         private readonly IOrderService _orderService;
+        private readonly IPaymentService _paymentService;
         private readonly ILocalizationService _localizationService;
         private readonly IStoreContext _storeContext;
         private readonly IWorkContext _workContext;
@@ -345,7 +347,7 @@ namespace Nop.Plugin.Payments.PayEx
             string agreementRef = null;
             // If the customer wishes to save his payment details, we make an agreement. 
             // This should be saved later in the complete operation, if it occurs.
-            agreementRef = TryGetAgreementRef(order.DeserializeCustomValues());
+            agreementRef = TryGetAgreementRef(_paymentService.DeserializeCustomValues(order));
             if (agreementRef == "new")
             {
                 CreateAgreementRequest agreementRequest = new CreateAgreementRequest
@@ -645,10 +647,10 @@ namespace Nop.Plugin.Payments.PayEx
             $"{_webHelper.GetStoreLocation()}Admin/PaymentPayEx/Configure";
 
         /// <summary>
-        /// Gets a view component for displaying plugin in public store ("payment info" checkout step)
+        /// Gets a name of a view component for displaying plugin in public store ("payment info" checkout step)
         /// </summary>
-        public virtual void GetPublicViewComponent(out string viewComponentName) =>
-            viewComponentName = "PaymentPayEx";
+        /// <returns>View component name</returns>
+        public virtual string GetPublicViewComponentName() => "PaymentPayEx";
 
         #endregion
 
@@ -670,69 +672,69 @@ namespace Nop.Plugin.Payments.PayEx
                 _settingService.SaveSetting(settings);
             }
 
-            this.AddOrUpdatePluginLocaleResource("Plugins.FriendlyName.Payments.PayEx", "Debit/Credit card");
-            this.AddOrUpdatePluginLocaleResource(
+            _localizationService.AddOrUpdatePluginLocaleResource("Plugins.FriendlyName.Payments.PayEx", "Debit/Credit card");
+            _localizationService.AddOrUpdatePluginLocaleResource(
                 "Plugins.Payments.PayEx.Fields.UseTestEnvironment", "Use test environment");
-            this.AddOrUpdatePluginLocaleResource(
+            _localizationService.AddOrUpdatePluginLocaleResource(
                 "Plugins.Payments.PayEx.Fields.UseTestEnvironment.Hint",
                 "Uses the test service instead of the production service. Don't forget to update your account number and encryption key.");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.Fields.AdditionalFee", "Additional fee");
-            this.AddOrUpdatePluginLocaleResource(
+            _localizationService.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.Fields.AdditionalFee", "Additional fee");
+            _localizationService.AddOrUpdatePluginLocaleResource(
                 "Plugins.Payments.PayEx.Fields.AdditionalFee.Hint",
                 "Enter an additional fee to charge your customers when using this payment method.");
-            this.AddOrUpdatePluginLocaleResource(
+            _localizationService.AddOrUpdatePluginLocaleResource(
                 "Plugins.Payments.PayEx.Fields.PassProductNamesAndTotals", "Pass product names and totals");
-            this.AddOrUpdatePluginLocaleResource(
+            _localizationService.AddOrUpdatePluginLocaleResource(
                 "Plugins.Payments.PayEx.Fields.PassProductNamesAndTotals.Hint",
                 "Check if product names and order totals should be passed to PayEx, instead of just order total.");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.Fields.AccountNumber", "Account number");
-            this.AddOrUpdatePluginLocaleResource(
+            _localizationService.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.Fields.AccountNumber", "Account number");
+            _localizationService.AddOrUpdatePluginLocaleResource(
                 "Plugins.Payments.PayEx.Fields.AccountNumber.Hint", "Specify your account number with PayEx.");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.Fields.EncryptionKey", "Encryption key");
-            this.AddOrUpdatePluginLocaleResource(
+            _localizationService.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.Fields.EncryptionKey", "Encryption key");
+            _localizationService.AddOrUpdatePluginLocaleResource(
                 "Plugins.Payments.PayEx.Fields.EncryptionKey.Hint", "Specify the encryption key for this account.");
-            this.AddOrUpdatePluginLocaleResource(
+            _localizationService.AddOrUpdatePluginLocaleResource(
                 "Plugins.Payments.PayEx.Fields.TransactionModeValues", "Transaction mode credit card");
-            this.AddOrUpdatePluginLocaleResource(
+            _localizationService.AddOrUpdatePluginLocaleResource(
                 "Plugins.Payments.PayEx.Fields.TransactionModeValues.Hint",
                 "When using Authorize, you will need to perform Capture manually to complete the transaction. When using Authorize and Capture, the sale will be completed instantly. Authorize is only possible with card payments.");
-            this.AddOrUpdatePluginLocaleResource(
+            _localizationService.AddOrUpdatePluginLocaleResource(
                 "Plugins.Payments.PayEx.Fields.ValidateOrderTotal", "Validate order total");
-            this.AddOrUpdatePluginLocaleResource(
+            _localizationService.AddOrUpdatePluginLocaleResource(
                 "Plugins.Payments.PayEx.Fields.ValidateOrderTotal.Hint",
                 "Check if we should validate our order total with the actual amount received from PayEx upon completing the transaction.");
-            this.AddOrUpdatePluginLocaleResource(
+            _localizationService.AddOrUpdatePluginLocaleResource(
                 "Plugins.Payments.PayEx.CurrencyNotes",
                 "If you're using this gateway ensure that your primary store currency is supported by PayEx.");
-            this.AddOrUpdatePluginLocaleResource(
+            _localizationService.AddOrUpdatePluginLocaleResource(
                 "Plugins.Payments.PayEx.TransactionCallbackNotes",
                 "It is required by PayEx that you use Transaction Callback to ensure Direct Debit payment info is received, and it's recommended for Credit Card payments. Enter the following URL for Transaction Callback in PayEx Merchant Admin:");
-            this.AddOrUpdatePluginLocaleResource(
+            _localizationService.AddOrUpdatePluginLocaleResource(
                 "Plugins.Payments.PayEx.RedirectionTip",
                 "You will be redirected to the PayEx site to complete the payment, once you click Confirm.");
-            this.AddOrUpdatePluginLocaleResource(
+            _localizationService.AddOrUpdatePluginLocaleResource(
                 "Plugins.Payments.PayEx.PaymentFailedPageTitle", "Your payment could not be processed");
-            this.AddOrUpdatePluginLocaleResource(
+            _localizationService.AddOrUpdatePluginLocaleResource(
                 "Plugins.Payments.PayEx.PaymentFailedInfo",
                 "You may try to pay the order again by going to order details. If you wish to use another payment method you may place the order again by clicking order details. Please do not hesitate to contact us if you need any help.");
 
-            this.AddOrUpdatePluginLocaleResource(
+            _localizationService.AddOrUpdatePluginLocaleResource(
                 "Plugins.Payments.PayEx.Fields.AllowCreateAgreement", "Allow save credit card");
-            this.AddOrUpdatePluginLocaleResource(
+            _localizationService.AddOrUpdatePluginLocaleResource(
                 "Plugins.Payments.PayEx.Fields.AllowCreateAgreement.Hint",
                 "Check to enable the customer to save a reference to a payment agreement on the initial purchase to be used for subsequent orders (AutoPay).");
-            this.AddOrUpdatePluginLocaleResource(
+            _localizationService.AddOrUpdatePluginLocaleResource(
                 "Plugins.Payments.PayEx.Fields.AgreementMaxAmount", "Max amount for saved payments");
-            this.AddOrUpdatePluginLocaleResource(
+            _localizationService.AddOrUpdatePluginLocaleResource(
                 "Plugins.Payments.PayEx.Fields.AgreementMaxAmount.Hint",
                 "Enter a maximum amount that should be allowed for purchases made using saved payment agreements.");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.NewCard", "New card");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.SavedCards", "Saved cards");
-            this.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.CreateAgreement", "Save my card");
-            this.AddOrUpdatePluginLocaleResource(
+            _localizationService.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.NewCard", "New card");
+            _localizationService.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.SavedCards", "Saved cards");
+            _localizationService.AddOrUpdatePluginLocaleResource("Plugins.Payments.PayEx.CreateAgreement", "Save my card");
+            _localizationService.AddOrUpdatePluginLocaleResource(
                 "Plugins.Payments.PayEx.CreateAgreementMotivation",
                 "- safely with PayEx. Your saved card may be used for future purchases.");
-            this.AddOrUpdatePluginLocaleResource(
+            _localizationService.AddOrUpdatePluginLocaleResource(
                 "Plugins.Payments.PayEx.CreateAgreementInfo",
                 @"The credit card information entered in the next step will be safely saved by our payment provider PayEx. In future checkouts you may choose the same credit card without having to enter the information again.
 You may be prompted to enter your 3D secure code via an external link to your bank if you choose to save your credit card information.");
@@ -750,7 +752,7 @@ You may be prompted to enter your 3D secure code via an external link to your ba
             {
                 _settingService.DeleteSetting<PayExPaymentSettings>();
 
-                this.DeletePluginLocaleResource("Plugins.FriendlyName.Payments.PayEx");
+                _localizationService.DeletePluginLocaleResource("Plugins.FriendlyName.Payments.PayEx");
                 DeleteLocaleResource("Fields.UseTestEnvironment");
                 DeleteLocaleResource("Fields.AdditionalFee");
                 DeleteLocaleResource("Fields.PassProductNamesAndTotals");
@@ -790,8 +792,8 @@ You may be prompted to enter your 3D secure code via an external link to your ba
 
         protected void DeleteLocaleResource(string name)
         {
-            this.DeletePluginLocaleResource($"Plugins.Payments.PayEx.{name}");
-            this.DeletePluginLocaleResource($"Plugins.Payments.PayEx.{name}.Hint");
+            _localizationService.DeletePluginLocaleResource($"Plugins.Payments.PayEx.{name}");
+            _localizationService.DeletePluginLocaleResource($"Plugins.Payments.PayEx.{name}.Hint");
         }
 
         #endregion

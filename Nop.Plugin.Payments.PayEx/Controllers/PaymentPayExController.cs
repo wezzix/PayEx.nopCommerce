@@ -78,7 +78,7 @@ namespace Nop.Plugin.Payments.PayEx.Controllers
             // Get our payment processor
             var processor = _paymentService.LoadPaymentMethodBySystemName(PaymentSystemName) as PayExPaymentProcessor;
             if (processor == null ||
-                !processor.IsPaymentMethodActive(_paymentSettings) || !processor.PluginDescriptor.Installed)
+                !_paymentService.IsPaymentMethodActive(processor) || !processor.PluginDescriptor.Installed)
                 throw new NopException("PayEx module is not active or cannot be loaded.");
 
             if (string.IsNullOrWhiteSpace(orderRef))

@@ -30,14 +30,18 @@ namespace SD.Payex2.Entities
         public bool? AlreadyCompleted { get; set; }
 
         /// <summary>
-        /// Only used with Financing and PayPal payment methods. Returns true if we do not know the status of the transaction from third party, transactionStatus will be init.
-        /// Swish: When implementing Complete its important to use the pending node in the xml response together with transaction status. 
+        /// Only used with Financing and PayPal payment methods. Returns true if we do not know the status of the transaction from
+        /// third party, transactionStatus will be init.
+        /// Swish: When implementing Complete its important to use the pending node in the xml response together with transaction
+        /// status.
         /// Pending true means Payex is waiting transaction status from Swish. An example can be when end customer is redirected
-        /// back to your merchant store before Payex has updated transaction status to 0(sale) – this can happend in the m-commerce flow.
-        /// If Complete response returns transaction status 1 and pending true, you should wait for transaction callback before doing another Complete call to check the final status.
+        /// back to your merchant store before Payex has updated transaction status to 0(sale) – this can happend in the m-commerce
+        /// flow.
+        /// If Complete response returns transaction status 1 and pending true, you should wait for transaction callback before
+        /// doing another Complete call to check the final status.
         /// </summary>
         public bool? Pending { get; set; }
-        
+
         /// <summary>
         /// The agreementRef from CreateAgreement. Used on Autopay transactions.
         /// </summary>
@@ -76,8 +80,8 @@ namespace SD.Payex2.Entities
                                                         (TransactionStatus == Enumerations.TransactionStatusCode.Sale ||
                                                          TransactionStatus
                                                          == Enumerations.TransactionStatusCode.Authorize ||
-                                                         TransactionStatus == Enumerations.TransactionStatusCode.Capture)
-        ;
+                                                         TransactionStatus
+                                                         == Enumerations.TransactionStatusCode.Capture);
 
         /// <summary>
         /// Gets a string describing any error during the request.

@@ -36,8 +36,8 @@
                                                          == Enumerations.TransactionStatusCode.Authorize ||
                                                          TransactionStatus == Enumerations.TransactionStatusCode.Capture
                                                          ||
-                                                         TransactionStatus == Enumerations.TransactionStatusCode.Credit)
-        ;
+                                                         TransactionStatus
+                                                         == Enumerations.TransactionStatusCode.Credit);
 
         /// <summary>
         /// Gets a string describing any error during the request.

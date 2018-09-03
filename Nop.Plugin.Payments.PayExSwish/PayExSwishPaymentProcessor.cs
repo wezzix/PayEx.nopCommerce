@@ -21,18 +21,44 @@ namespace Nop.Plugin.Payments.PayExSwish
     /// </summary>
     public class PayExSwishPaymentProcessor : PayExPaymentProcessor
     {
+        private readonly ILocalizationService _localizationService;
+
         public PayExSwishPaymentProcessor(
-            PayExPaymentSettings payExPaymentSettings, PayExAgreementObjectContext payExAgreementObjectContext,
-            IPayExAgreementService payExAgreementService, ISettingService settingService,
-            ICurrencyService currencyService, CurrencySettings currencySettings, IWebHelper webHelper,
-            ICheckoutAttributeParser checkoutAttributeParser, ITaxService taxService,
-            IHttpContextAccessor httpContextAccessor, ILogger logger, IOrderService orderService,
-            ILocalizationService localizationService, IStoreContext storeContext, IWorkContext workContext)
+            CurrencySettings currencySettings,
+            ICheckoutAttributeParser checkoutAttributeParser,
+            ICurrencyService currencyService,
+            IHttpContextAccessor httpContextAccessor,
+            ILocalizationService localizationService,
+            ILogger logger,
+            IOrderService orderService,
+            IPayExAgreementService payExAgreementService,
+            IPaymentService paymentService,
+            ISettingService settingService,
+            IStoreContext storeContext,
+            ITaxService taxService,
+            IWebHelper webHelper,
+            IWorkContext workContext,
+            PayExAgreementObjectContext payExAgreementObjectContext,
+            PayExPaymentSettings payExPaymentSettings)
             : base(
-                payExPaymentSettings, payExAgreementObjectContext, payExAgreementService, settingService,
-                currencyService, currencySettings, webHelper, checkoutAttributeParser, taxService, httpContextAccessor,
-                logger, orderService, localizationService, storeContext, workContext)
+                currencySettings,
+                checkoutAttributeParser,
+                currencyService,
+                httpContextAccessor,
+                localizationService,
+                logger,
+                orderService,
+                payExAgreementService,
+                paymentService,
+                settingService,
+                storeContext,
+                taxService,
+                webHelper,
+                workContext,
+                payExAgreementObjectContext,
+                payExPaymentSettings)
         {
+            _localizationService = localizationService;
         }
 
         /// <summary>
@@ -44,10 +70,10 @@ namespace Nop.Plugin.Payments.PayExSwish
         #region IPaymentMethod Methods
 
         /// <summary>
-        /// Gets a view component for displaying plugin in public store ("payment info" checkout step)
+        /// Gets a name of a view component for displaying plugin in public store ("payment info" checkout step)
         /// </summary>
-        public override void GetPublicViewComponent(out string viewComponentName) =>
-            viewComponentName = "PaymentPayExSwish";
+        /// <returns>View component name</returns>
+        public override string GetPublicViewComponentName() => "PaymentPayExSwish";
 
         public override bool SkipPaymentInfo => true;
 
@@ -73,8 +99,8 @@ namespace Nop.Plugin.Payments.PayExSwish
 
         public override void Install()
         {
-            this.AddOrUpdatePluginLocaleResource("Plugins.FriendlyName.Payments.PayExSwish", "Swish");
-            this.AddOrUpdatePluginLocaleResource(
+            _localizationService.AddOrUpdatePluginLocaleResource("Plugins.FriendlyName.Payments.PayExSwish", "Swish");
+            _localizationService.AddOrUpdatePluginLocaleResource(
                 "Plugins.Payments.PayExSwish.RedirectionTip",
                 "You will be redirected to the PayEx site to complete the payment, once you click Confirm.");
 
@@ -83,8 +109,8 @@ namespace Nop.Plugin.Payments.PayExSwish
 
         public override void Uninstall()
         {
-            this.DeletePluginLocaleResource("Plugins.FriendlyName.Payments.PayExSwish");
-            this.DeletePluginLocaleResource("Plugins.Payments.PayExSwish.RedirectionTip");
+            _localizationService.DeletePluginLocaleResource("Plugins.FriendlyName.Payments.PayExSwish");
+            _localizationService.DeletePluginLocaleResource("Plugins.Payments.PayExSwish.RedirectionTip");
 
             base.Uninstall();
         }

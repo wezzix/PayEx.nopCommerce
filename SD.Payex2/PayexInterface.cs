@@ -9,7 +9,6 @@ using SD.Payex2.Entities;
 using SD.Payex2.Services.PxAgreement;
 using SD.Payex2.Services.PxOrder;
 using SD.Payex2.Utilities;
-using InitializeRequest = SD.Payex2.Entities.InitializeRequest;
 
 namespace SD.Payex2
 {
@@ -66,9 +65,9 @@ namespace SD.Payex2
 
         private PxOrderSoapClient GetPxOrderClient()
         {
-			//PayEx requires TLS 1.2 since 2017.11.20 at 09:00
+            //PayEx requires TLS 1.2 since 2017.11.20 at 09:00
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-			
+
             Uri baseAddress;
             if (UseTestEnvironment)
                 baseAddress = new Uri("https://external.externaltest.payex.com/pxorder/pxorder.asmx");
@@ -83,9 +82,9 @@ namespace SD.Payex2
 
         private PxAgreementSoapClient GetPxAgreementClient()
         {
-			//PayEx requires TLS 1.2 since 2017.11.20 at 09:00
+            //PayEx requires TLS 1.2 since 2017.11.20 at 09:00
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-			
+
             Uri baseAddress;
             if (UseTestEnvironment)
                 baseAddress = new Uri("https://external.externaltest.payex.com/pxagreement/pxagreement.asmx");
@@ -281,6 +280,7 @@ namespace SD.Payex2
                 throw new ArgumentOutOfRangeException(nameof(transactionNumber), "transactionNumber is required");
             if (amount <= decimal.Zero)
                 throw new ArgumentOutOfRangeException(nameof(amount), "amount must be non-zero.");
+
             // Null not allowed
             orderID = orderID ?? string.Empty;
             var vatAmount = 0;
@@ -336,6 +336,7 @@ namespace SD.Payex2
                 throw new ArgumentOutOfRangeException(nameof(transactionNumber), "transactionNumber is required");
             if (amount <= decimal.Zero)
                 throw new ArgumentOutOfRangeException(nameof(amount), "amount must be non-zero.");
+
             // Null not allowed
             orderID = orderID ?? string.Empty;
             var convAmount = amount.ToPayEx();
@@ -461,7 +462,8 @@ namespace SD.Payex2
 
             // Invoke Initialize method on external PayEx PxOrder web service
             var payexOrder = GetPxOrderClient();
-            var xmlReturn = await payexOrder.GetTransactionDetails2Async(Account.AccountNumber, transactionNumber, hash);
+            var xmlReturn = await payexOrder.GetTransactionDetails2Async(
+                Account.AccountNumber, transactionNumber, hash);
 
             // Parse the result and retrieve code-node to figure out if the service method was invoked successfully.
             var result = ResultParser.ParseTransactionDetailsResult(xmlReturn);
