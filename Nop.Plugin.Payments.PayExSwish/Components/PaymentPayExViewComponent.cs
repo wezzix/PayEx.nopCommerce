@@ -3,7 +3,7 @@ using Nop.Web.Framework.Components;
 
 namespace Nop.Plugin.Payments.PayExSwish.Components
 {
-    [ViewComponent(Name = "PaymentPayExDirectDebit")]
+    [ViewComponent(Name = "PaymentPayExSwish")]
     public class PaymentPayExViewComponent : NopViewComponent
     {
         public IViewComponentResult Invoke()
