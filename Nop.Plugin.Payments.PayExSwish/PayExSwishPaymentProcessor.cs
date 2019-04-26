@@ -75,7 +75,7 @@ namespace Nop.Plugin.Payments.PayExSwish
         /// <returns>View component name</returns>
         public override string GetPublicViewComponentName() => "PaymentPayExSwish";
 
-        public override bool SkipPaymentInfo => true;
+        public override bool SkipPaymentInfo => false;
 
         protected override void BeforeInitialize(
             PostProcessPaymentRequest postProcessPaymentRequest, InitializeRequest request)
