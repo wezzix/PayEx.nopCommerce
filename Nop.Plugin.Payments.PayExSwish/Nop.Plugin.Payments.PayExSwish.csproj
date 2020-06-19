@@ -23,11 +23,15 @@
 
   <ItemGroup>
     <None Remove="logo.jpg" />
+    <None Remove="logo.png" />
     <None Remove="plugin.json" />
     <None Remove="Views\_ViewImports.cshtml" />
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="logo.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="plugin.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
